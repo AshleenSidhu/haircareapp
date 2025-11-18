@@ -39,7 +39,17 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+    // Pass only variant values into the cva function, then merge any incoming
+    // `className` with `cn`. This ensures both the variant classes and any
+    // extra classes passed by consumers are applied.
+    if (process.env.NODE_ENV !== "production") {
+      // Debug: log computed classes to help diagnose variant issues in dev.
+      // Remove this log once the issue is resolved.
+      // eslint-disable-next-line no-console
+      console.log("[Button] computed:", buttonVariants({ variant, size }), "extra:", className);
+    }
+
+    return <Comp className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props} />;
   },
 );
 Button.displayName = "Button";

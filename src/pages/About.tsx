@@ -1,5 +1,5 @@
-import { Layout } from "@/components/Layout";
-import { Card } from "@/components/ui/card";
+import { Layout } from "../components/Layout";
+import { Card } from "../components/ui/card";
 import { Heart, Users, Target } from "lucide-react";
 
 const About = () => {

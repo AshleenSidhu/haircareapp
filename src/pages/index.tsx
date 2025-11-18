@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, Calendar } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Layout } from "@/components/Layout";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Layout } from "@/../../src/components/Layout";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -27,11 +27,11 @@ const Index = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-            <Button size="lg" onClick={() => navigate("/scan")} className="text-lg px-8 py-6">
+            <Button onClick={() => navigate("/scan")} className="text-lg px-8 py-6">
               Start your analysis
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/booking")} className="text-lg px-8 py-6">
+            <Button variant="outline" onClick={() => navigate("/booking")} className="text-lg px-8 py-6">
               <Calendar className="w-5 h-5 mr-2" />
               Book a stylist
             </Button>
@@ -75,7 +75,7 @@ const Index = () => {
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
             Join thousands who've discovered their perfect products and routines
           </p>
-          <Button size="lg" onClick={() => navigate("/scan")} className="text-lg px-8 py-6">
+          <Button onClick={() => navigate("/scan")} className="text-lg px-8 py-6">
             Get started now
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>

@@ -1,7 +1,7 @@
 import { Calendar, Clock, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 
 const Booking = () => {
   const stylists = [
@@ -53,8 +53,8 @@ const Booking = () => {
                     <div>
                       <h3 className="text-xl mb-1 text-foreground">{stylist.name}</h3>
                       <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">{stylist.specialty}</Badge>
-                        <Badge variant="outline">{stylist.experience}</Badge>
+                        <Badge>{stylist.specialty}</Badge>
+                        <Badge>{stylist.experience}</Badge>
                       </div>
                     </div>
                   </div>
@@ -67,7 +67,7 @@ const Booking = () => {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {stylist.available.map((time, i) => (
-                      <Button key={i} variant="outline" size="sm">
+                      <Button key={i} className="h-8 text-sm px-3">
                         {time}
                       </Button>
                     ))}

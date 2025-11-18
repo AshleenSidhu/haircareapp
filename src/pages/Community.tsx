@@ -1,7 +1,7 @@
 import { Star, ThumbsUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import { useNavigate } from "react-router-dom";
 
 const Community = () => {
@@ -61,7 +61,7 @@ const Community = () => {
                         <Star key={i} className="w-4 h-4 fill-primary text-primary" />
                       ))}
                     </div>
-                    <Badge variant="secondary">{review.product}</Badge>
+                    <Badge>{review.product}</Badge>
                   </div>
 
                   <p className="text-foreground">{review.comment}</p>
@@ -76,7 +76,7 @@ const Community = () => {
           ))}
         </div>
 
-        <Button variant="outline" className="w-full" onClick={() => navigate("/results")}>
+        <Button className="w-full" onClick={() => navigate("/results")}>
           Back to recommendations
         </Button>
       </div>
