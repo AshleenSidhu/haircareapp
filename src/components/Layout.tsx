@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Navigation } from "@/components/Navigation";
-import { Button } from "@/components/ui/button";
+import { Navigation } from "../components/Navigation";
+import { Button } from "../components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 interface LayoutProps {

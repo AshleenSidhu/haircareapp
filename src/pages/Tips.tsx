@@ -1,6 +1,6 @@
-import { Layout } from "@/components/Layout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Layout } from "../components/Layout";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
 import { BookOpen } from "lucide-react";
 
 const Tips = () => {

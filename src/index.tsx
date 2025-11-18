@@ -1,4 +1,10 @@
-// Entry point for react-scripts (create-react-app) which expects `src/index.(js|tsx)`.
-// This file delegates to the existing `main.tsx` Vite-style entry to avoid duplicating
-// bootstrapping logic.
-import "./main.tsx";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Root element not found");
+}
+
+createRoot(rootElement).render(<App />);

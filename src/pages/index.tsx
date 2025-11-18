@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, Calendar } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { Layout } from "@/../../src/components/Layout";
+import { Layout } from "@/components/Layout";
 
 const Index = () => {
   const navigate = useNavigate();

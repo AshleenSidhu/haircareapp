@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Droplets, Wind, Sparkles, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 
 const Results = () => {
   const navigate = useNavigate();

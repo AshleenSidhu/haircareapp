@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Sun, Moon, Calendar, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 
 const Routine = () => {
   const navigate = useNavigate();

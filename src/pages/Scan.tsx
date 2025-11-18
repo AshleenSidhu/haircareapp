@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, Camera, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 
 const Scan = () => {
   const navigate = useNavigate();
