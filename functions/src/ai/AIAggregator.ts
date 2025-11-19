@@ -3,19 +3,18 @@
  * Uses OpenAI GPT-4 or GPT-3.5-turbo for product recommendations
  */
 
-import * as functions from 'firebase-functions';
 import { ProductScore } from '../types';
 import { cache } from '../utils/cache';
 
 // OpenAI API configuration
-// Set these in Firebase Functions config or environment variables:
-// firebase functions:config:set openai.api_key="your-key-here"
-// firebase functions:config:set openai.model="gpt-4" or "gpt-3.5-turbo"
-// Or use environment variables: OPENAI_API_KEY and AI_MODEL
-const AI_API_KEY = process.env.OPENAI_API_KEY || functions.config().openai?.api_key || '';
+// Set these as environment variables in Firebase Functions:
+// firebase functions:secrets:set OPENAI_API_KEY
+// Or use: firebase functions:config:set openai.api_key="your-key-here" (v1 only)
+// Environment variables: OPENAI_API_KEY and AI_MODEL
+const AI_API_KEY = process.env.OPENAI_API_KEY || '';
 const AI_API_URL = 'https://api.openai.com/v1/chat/completions';
 // Default to GPT-3.5-turbo for cost efficiency, can be upgraded to GPT-4
-const AI_MODEL = process.env.AI_MODEL || functions.config().openai?.model || 'gpt-3.5-turbo';
+const AI_MODEL = process.env.AI_MODEL || 'gpt-3.5-turbo';
 
 export class AIAggregator {
   /**
@@ -83,7 +82,9 @@ export class AIAggregator {
   /**
    * Call AI service (OpenAI, Claude, etc.)
    */
-  private async callAIService(products: ProductScore[]): Promise<Array<{ productId: string; score: number; explanation: string }>> {
+  private async callAIService(
+    products: ProductScore[]
+  ): Promise<Array<{ productId: string; score: number; explanation: string }>> {
     if (!AI_API_KEY) {
       console.warn('[AIAggregator] No AI API key configured, using mock explanations');
       return this.generateMockExplanations(products);
@@ -106,7 +107,10 @@ export class AIAggregator {
           messages: [
             {
               role: 'system',
-              content: 'You are a professional hair care expert with deep knowledge of ingredients, product formulations, and hair science. Provide accurate, helpful recommendations based on data-driven analysis.',
+              content:
+                'You are a professional hair care expert with deep knowledge of ' +
+                'ingredients, product formulations, and hair science. Provide ' +
+                'accurate, helpful recommendations based on data-driven analysis.',
             },
             {
               role: 'user',
@@ -152,43 +156,46 @@ Product ${i + 1}: ${p.product.brand} ${p.product.name}
 `.trim();
     }).join('\n\n');
 
-    return `You are a hair care expert analyzing products for personalized recommendations.
-
-Analyze these ${products.length} hair care products and:
-1. Re-rank them based on overall quality, user needs, value, and effectiveness
-2. Provide a clear, helpful explanation (1-2 sentences) for each product explaining why it's recommended or not recommended
-
-Consider:
-- How well the product matches the user's hair type and concerns
-- Ingredient safety and potential allergens
-- Sustainability and ethical practices
-- Value for money
-- User reviews and sentiment
-
-Products:
-${productSummaries}
-
-IMPORTANT: Return ONLY a valid JSON array in this exact format (no markdown, no code blocks, just the JSON):
-[
-  {
-    "productId": "exact_product_id_from_above",
-    "score": 85,
-    "explanation": "Clear 1-2 sentence explanation here"
-  },
-  {
-    "productId": "next_product_id",
-    "score": 78,
-    "explanation": "Next explanation"
-  }
-]
-
-Rank products from best (highest score) to worst (lowest score). Scores should be between 0-100.`.trim();
+    return (
+      'You are a hair care expert analyzing products for personalized recommendations.\n\n' +
+      `Analyze these ${products.length} hair care products and:\n` +
+      '1. Re-rank them based on overall quality, user needs, value, and effectiveness\n' +
+      '2. Provide a clear, helpful explanation (1-2 sentences) for each product ' +
+      'explaining why it\'s recommended or not recommended\n\n' +
+      'Consider:\n' +
+      '- How well the product matches the user\'s hair type and concerns\n' +
+      '- Ingredient safety and potential allergens\n' +
+      '- Sustainability and ethical practices\n' +
+      '- Value for money\n' +
+      '- User reviews and sentiment\n\n' +
+      'Products:\n' +
+      `${productSummaries}\n\n` +
+      'IMPORTANT: Return ONLY a valid JSON array in this exact format ' +
+      '(no markdown, no code blocks, just the JSON):\n' +
+      '[\n' +
+      '  {\n' +
+      '    "productId": "exact_product_id_from_above",\n' +
+      '    "score": 85,\n' +
+      '    "explanation": "Clear 1-2 sentence explanation here"\n' +
+      '  },\n' +
+      '  {\n' +
+      '    "productId": "next_product_id",\n' +
+      '    "score": 78,\n' +
+      '    "explanation": "Next explanation"\n' +
+      '  }\n' +
+      ']\n\n' +
+      'Rank products from best (highest score) to worst (lowest score). ' +
+      'Scores should be between 0-100.'
+    ).trim();
   }
 
   /**
    * Parse OpenAI API response
    */
-  private parseAIResponse(data: any, products: ProductScore[]): Array<{ productId: string; score: number; explanation: string }> {
+  private parseAIResponse(
+    data: any,
+    products: ProductScore[]
+  ): Array<{ productId: string; score: number; explanation: string }> {
     try {
       // Extract content from OpenAI response
       let content = '';
@@ -224,11 +231,11 @@ Rank products from best (highest score) to worst (lowest score). Scores should b
       }
 
       // Validate and normalize results
-      return results.map(item => ({
+      return results.map((item: any) => ({
         productId: item.productId || item.id || '',
         score: typeof item.score === 'number' ? Math.max(0, Math.min(100, item.score)) : 50,
         explanation: item.explanation || item.reason || 'No explanation provided',
-      })).filter(item => item.productId); // Filter out invalid entries
+      })).filter((item: any) => item.productId); // Filter out invalid entries
 
     } catch (error: any) {
       console.error('[AIAggregator] Error parsing AI response:', error.message);
@@ -239,16 +246,221 @@ Rank products from best (highest score) to worst (lowest score). Scores should b
   }
 
   /**
+   * Explain an ingredient's purpose in hair care
+   * Provides simple, accurate, science-based education without fear-mongering
+   */
+  async explainIngredient(
+    ingredientName: string,
+    productName: string,
+    brand: string
+  ): Promise<string> {
+    if (!AI_API_KEY) {
+      return this.getSimpleIngredientExplanation(ingredientName);
+    }
+
+    try {
+      const prompt =
+        `Explain what the ingredient "${ingredientName}" does for hair care in simple, ` +
+        'easy-to-understand language. Focus on:\n' +
+        '1. What it does for hair (e.g., moisturizes, strengthens, adds shine)\n' +
+        '2. How it works in simple terms\n' +
+        '3. Is it safe for sensitive scalp? (brief note if relevant)\n\n' +
+        'IMPORTANT GUIDELINES:\n' +
+        '- Use simple, everyday language (avoid complex scientific jargon)\n' +
+        '- Be factual and science-based\n' +
+        '- DO NOT use fear-mongering language or exaggerate risks\n' +
+        '- Present information in a balanced, educational way\n' +
+        '- If there are concerns, mention them factually without alarm\n' +
+        '- Keep it to 2-3 sentences maximum\n\n' +
+        'Example good explanation: "Glycerin is a humectant that draws moisture into hair, ' +
+        'keeping it hydrated and soft. It\'s generally safe for most hair types, though some ' +
+        'people with very sensitive scalps may want to patch test first."\n\n' +
+        `Now explain "${ingredientName}" for the product "${productName}" by ${brand}:`;
+
+      const response = await fetch(AI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a hair care educator and cosmetic chemist. Your role is to provide ' +
+                'simple, accurate, science-based explanations about hair care ingredients. ' +
+                'Always use plain language, avoid fear-mongering, and present information ' +
+                'in a balanced, educational manner. Focus on what ingredients DO for hair, ' +
+                'not what they might do wrong. If there are legitimate concerns, mention ' +
+                'them factually without exaggeration.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          temperature: 0.5, // Lower temperature for more consistent, factual responses
+          max_tokens: 200,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const explanation = data.choices[0]?.message?.content || '';
+      
+      // Clean up the explanation (remove any markdown, extra formatting)
+      const cleaned = explanation
+        .replace(/```json|```|`/g, '')
+        .trim()
+        .split('\n')[0]; // Take first sentence/paragraph
+
+      return cleaned || this.getSimpleIngredientExplanation(ingredientName);
+    } catch (error: any) {
+      console.error('[AIAggregator] Error explaining ingredient:', error);
+      return this.getSimpleIngredientExplanation(ingredientName);
+    }
+  }
+
+  /**
+   * Get simple ingredient explanation (fallback)
+   */
+  private getSimpleIngredientExplanation(ingredientName: string): string {
+    const lowerName = ingredientName.toLowerCase();
+    
+    // Simple, educational explanations for common ingredients
+    const explanations: Record<string, string> = {
+      'water':
+        'The base of most hair products, helps distribute other ingredients evenly throughout your hair.',
+      'glycerin':
+        'A humectant that draws moisture into hair, keeping it hydrated and soft. ' +
+        'Generally safe for most hair types.',
+      'coconut oil':
+        'Deeply moisturizes and nourishes hair, especially beneficial for curly and dry hair types. ' +
+        'Helps reduce protein loss.',
+      'shea butter':
+        'Rich moisturizer that helps reduce frizz and adds shine. Great for dry, damaged hair.',
+      'argan oil':
+        'Lightweight oil that adds shine and helps protect hair from heat and environmental damage.',
+      'aloe vera':
+        'Soothes scalp and adds moisture without weighing hair down. Good for sensitive scalps.',
+      'jojoba oil':
+        'Mimics natural scalp oils, helps balance oil production and adds shine without greasiness.',
+      'silicone':
+        'Creates a protective barrier on hair, reducing frizz and adding smoothness. ' +
+        'Some types can build up over time, but are generally safe.',
+      'sulfate':
+        'Cleansing agent that effectively removes dirt and oil. Can be drying for some hair types, ' +
+        'especially curly or color-treated hair.',
+      'protein':
+        'Strengthens hair and helps repair damage, especially beneficial for high-porosity hair. ' +
+        'Use in moderation to avoid stiffness.',
+      'paraben':
+        'Preservative that prevents bacterial growth in products. Some people prefer paraben-free options, ' +
+        'but they are generally considered safe in cosmetic concentrations.',
+      'dimethicone':
+        'A type of silicone that smooths hair and reduces frizz. ' +
+        'Creates a protective layer that can build up with frequent use.',
+      'panthenol':
+        'A form of vitamin B5 that moisturizes and adds shine. ' +
+        'Helps improve hair elasticity and manageability.',
+      'keratin':
+        'A protein naturally found in hair. In products, it helps strengthen and smooth damaged hair.',
+    };
+
+    // Check for partial matches
+    for (const [key, explanation] of Object.entries(explanations)) {
+      if (lowerName.includes(key)) {
+        return explanation;
+      }
+    }
+
+    // Generic educational explanation
+    return (
+      'This ingredient is commonly used in hair care products for its beneficial properties. ' +
+      'It helps maintain healthy, manageable hair.'
+    );
+  }
+
+  /**
+   * Explain why a product is recommended for a user
+   */
+  async explainProductRecommendation(
+    product: any, // Product type from products.ts
+    userQuizAnswers: any
+  ): Promise<string> {
+    if (!AI_API_KEY) {
+      return 'This product matches your hair profile and preferences.';
+    }
+
+    try {
+      const prompt =
+        `Explain why the hair care product "${product.title || product.name}" ` +
+        `by ${product.brand} is recommended for a user with the following profile:
+- Hair Type: ${userQuizAnswers.hairType || 'Not specified'}
+- Porosity: ${userQuizAnswers.porosity || 'Not specified'}
+- Concerns: ${userQuizAnswers.concerns?.join(', ') || 'None'}
+- Preferences: ${JSON.stringify(userQuizAnswers.preferences || {})}
+- Allergens to avoid: ${userQuizAnswers.allergens?.join(', ') || 'None'}
+
+Product tags: ${product.tags?.join(', ') || 'N/A'}
+
+Provide a personalized explanation (3-4 sentences) explaining why this product fits their needs.`;
+
+      const response = await fetch(AI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a hair care expert providing personalized product ' +
+                'recommendations. Explain why products match user needs.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 200,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || 'This product matches your hair profile and preferences.';
+    } catch (error: any) {
+      console.error('[AIAggregator] Error explaining recommendation:', error);
+      return 'This product matches your hair profile and preferences.';
+    }
+  }
+
+  /**
    * Generate mock explanations (for development/testing)
    */
-  private generateMockExplanations(products: ProductScore[]): Array<{ productId: string; score: number; explanation: string }> {
+  private generateMockExplanations(
+    products: ProductScore[]
+  ): Array<{ productId: string; score: number; explanation: string }> {
     return products.map((p, i) => {
       const explanations = [
-        `This product is well-suited for your hair type with good ingredient safety and positive reviews.`,
-        `A solid choice that matches your preferences, though slightly above your budget range.`,
-        `Highly rated by users with similar hair concerns. The ingredients are generally safe.`,
-        `Good value for money with sustainable packaging and cruelty-free certification.`,
-        `Effective product with strong tag matches, though some users report minor issues.`,
+        'This product is well-suited for your hair type with good ingredient safety and positive reviews.',
+        'A solid choice that matches your preferences, though slightly above your budget range.',
+        'Highly rated by users with similar hair concerns. The ingredients are generally safe.',
+        'Good value for money with sustainable packaging and cruelty-free certification.',
+        'Effective product with strong tag matches, though some users report minor issues.',
       ];
 
       return {

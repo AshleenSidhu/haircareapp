@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
   env: {
     es6: true,
@@ -5,7 +7,8 @@ module.exports = {
   },
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: ['tsconfig.json'],
+    project: [path.resolve(__dirname, 'tsconfig.json')],
+    tsconfigRootDir: __dirname,
     sourceType: 'module',
   },
   ignorePatterns: [

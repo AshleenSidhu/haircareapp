@@ -1,18 +1,18 @@
 /**
- * Adapter for ingredient safety data
- * Integrates with Cosmethics API and INCI database
- * Documentation: https://cosmethics.eu/ (or similar ingredient safety APIs)
+ * Ingredient Safety Adapter
+ * Uses Cosmethics/INCI API for ingredient safety scores, scientific explanations, and allergen detection
+ * Falls back to local knowledge base if API is unavailable
  */
 
 import axios from 'axios';
-import { IngredientSafetyData, CosmethicsIngredient } from '../types';
+import { IngredientSafetyData } from '../types';
 import { cache } from '../utils/cache';
 
-// Placeholder API endpoints - update with actual Cosmethics/INCI API endpoints
-const COSMETHICS_API = 'https://api.cosmethics.eu/v1'; // Update with actual endpoint
-const INCI_API = 'https://api.inci-database.org/v1'; // Update with actual endpoint
+// Cosmethics/INCI API endpoint (update with actual endpoint)
+const COSMETHICS_API_URL = process.env.COSMETHICS_API_URL || 'https://api.cosmethics.com/v1';
+const COSMETHICS_API_KEY = process.env.COSMETHICS_API_KEY || '';
 
-// Blacklisted ingredients (high concern)
+// Local knowledge base (fallback)
 const BLACKLISTED_INGREDIENTS = [
   'sodium lauryl sulfate',
   'sodium laureth sulfate',
@@ -23,7 +23,6 @@ const BLACKLISTED_INGREDIENTS = [
   'triclosan',
 ];
 
-// Ingredient concern mapping (for quick lookup)
 const INGREDIENT_CONCERNS: Record<string, { concern: string; severity: 'low' | 'medium' | 'high' }> = {
   'sodium lauryl sulfate': { concern: 'Can cause dryness and irritation', severity: 'high' },
   'sodium laureth sulfate': { concern: 'Milder than SLS but can still cause irritation', severity: 'medium' },
@@ -31,165 +30,125 @@ const INGREDIENT_CONCERNS: Record<string, { concern: string; severity: 'low' | '
   'formaldehyde': { concern: 'Carcinogen, skin irritant', severity: 'high' },
   'silicones': { concern: 'Can cause buildup, not water-soluble', severity: 'low' },
   'alcohol': { concern: 'Can be drying, especially denatured alcohol', severity: 'medium' },
+  'mineral oil': { concern: 'Can clog pores, not recommended for some hair types', severity: 'low' },
+  'sulfates': { concern: 'Can strip natural oils, cause dryness', severity: 'medium' },
 };
 
 export class IngredientAdapter {
   /**
    * Analyze ingredient safety for a product
+   * Uses Cosmethics/INCI API if available, falls back to local knowledge base
    */
   async analyzeIngredientSafety(ingredients: string[]): Promise<IngredientSafetyData> {
     if (!ingredients || ingredients.length === 0) {
       return {
-        score: 50, // Neutral score if no ingredients listed
+        score: 50,
         flaggedIngredients: [],
       };
     }
 
-    try {
-      // Check cache for each ingredient
-      const ingredientScores: CosmethicsIngredient[] = [];
-      const uncachedIngredients: string[] = [];
-
-      for (const ingredient of ingredients) {
-        const normalizedName = this.normalizeIngredientName(ingredient);
-        const cacheKey = cache.getIngredientKey(normalizedName);
-
-        const cached = cache.get<CosmethicsIngredient>(cacheKey);
-        if (cached) {
-          ingredientScores.push(cached);
-        } else {
-          uncachedIngredients.push(normalizedName);
+    // Try to use Cosmethics API if configured
+    if (COSMETHICS_API_KEY && COSMETHICS_API_URL) {
+      try {
+        const apiResult = await this.fetchFromCosmethicsAPI(ingredients);
+        if (apiResult) {
+          return apiResult;
         }
+      } catch (error: any) {
+        console.warn('[IngredientAdapter] Cosmethics API unavailable, using local knowledge base:', error.message);
       }
-
-      // Fetch uncached ingredients from API
-      if (uncachedIngredients.length > 0) {
-        const apiResults = await this.fetchIngredientSafety(uncachedIngredients);
-        ingredientScores.push(...apiResults);
-
-        // Cache results
-        apiResults.forEach(result => {
-          const cacheKey = cache.getIngredientKey(result.name);
-          cache.set(cacheKey, result, 86400); // 24 hour cache
-        });
-      }
-
-      // Calculate overall safety score
-      return this.calculateSafetyScore(ingredients, ingredientScores);
-    } catch (error: any) {
-      console.error('[IngredientAdapter] Error analyzing ingredients:', error.message);
-      // Fallback to basic analysis
-      return this.calculateBasicSafetyScore(ingredients);
     }
+
+    // Fallback to local knowledge base
+    return this.calculateBasicSafetyScore(ingredients);
   }
 
   /**
-   * Fetch ingredient safety from API
+   * Fetch ingredient safety data from Cosmethics/INCI API
    */
-  private async fetchIngredientSafety(ingredientNames: string[]): Promise<CosmethicsIngredient[]> {
-    const results: CosmethicsIngredient[] = [];
-
-    // Try Cosmethics API first
+  private async fetchFromCosmethicsAPI(ingredients: string[]): Promise<IngredientSafetyData | null> {
     try {
-      const response = await axios.post(
-        `${COSMETICS_API}/ingredients/analyze`,
-        { ingredients: ingredientNames },
-        { timeout: 10000 }
-      );
-
-      if (response.data?.ingredients) {
-        return response.data.ingredients.map((item: any) => ({
-          name: item.name,
-          safetyScore: item.safety_score || 50,
-          concerns: item.concerns || [],
-          allergenInfo: item.allergen_info || [],
-        }));
+      const cacheKey = `cosmethics_${ingredients.sort().join('_')}`;
+      const cached = cache.get<IngredientSafetyData>(cacheKey);
+      if (cached) {
+        return cached;
       }
-    } catch (error: any) {
-      console.warn('[IngredientAdapter] Cosmethics API unavailable, using fallback');
-    }
 
-    // Fallback: Use local knowledge base
-    for (const ingredient of ingredientNames) {
-      const concern = INGREDIENT_CONCERNS[ingredient.toLowerCase()];
-      const isBlacklisted = BLACKLISTED_INGREDIENTS.some(
-        bl => ingredient.toLowerCase().includes(bl.toLowerCase())
+      // Call Cosmethics API
+      const response = await axios.post(
+        `${COSMETHICS_API_URL}/ingredients/analyze`,
+        { ingredients },
+        {
+          headers: {
+            'Authorization': `Bearer ${COSMETHICS_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        }
       );
 
-      results.push({
-        name: ingredient,
-        safetyScore: isBlacklisted ? 20 : (concern ? (concern.severity === 'high' ? 30 : concern.severity === 'medium' ? 50 : 70) : 80),
-        concerns: concern ? [concern.concern] : [],
-      });
-    }
+      if (response.data) {
+        const safetyData = this.parseCosmethicsResponse(response.data, ingredients);
+        cache.set(cacheKey, safetyData, 7200); // 2 hour cache
+        return safetyData;
+      }
 
-    return results;
+      return null;
+    } catch (error: any) {
+      if (error.code === 'ENOTFOUND' || error.response?.status === 404) {
+        return null; // API not available
+      }
+      throw error;
+    }
   }
 
   /**
-   * Calculate safety score from ingredient analysis
+   * Parse Cosmethics API response
    */
-  private calculateSafetyScore(
-    allIngredients: string[],
-    ingredientScores: CosmethicsIngredient[]
-  ): IngredientSafetyData {
+  private parseCosmethicsResponse(data: any, ingredients: string[]): IngredientSafetyData {
     const flaggedIngredients: Array<{ name: string; concern: string; severity: 'low' | 'medium' | 'high' }> = [];
     let totalScore = 0;
-    let validScores = 0;
+    let count = 0;
 
-    // Check for blacklisted ingredients
-    const allergenMatches: string[] = [];
+    // Parse API response structure (adjust based on actual API format)
+    const ingredientData = data.ingredients || data.results || [];
+    
+    for (const ingData of ingredientData) {
+      const ingredientName = ingData.name || ingData.ingredient;
+      const safetyScore = ingData.safety_score || ingData.score || 50;
+      totalScore += safetyScore;
+      count++;
 
-    for (const ingredient of allIngredients) {
-      const normalized = this.normalizeIngredientName(ingredient);
-      const score = ingredientScores.find(s => s.name.toLowerCase() === normalized.toLowerCase());
-
-      if (score) {
-        totalScore += score.safetyScore;
-        validScores++;
-
-        // Flag concerning ingredients
-        if (score.safetyScore < 50 || score.concerns.length > 0) {
-          const concern = INGREDIENT_CONCERNS[normalized.toLowerCase()];
-          flaggedIngredients.push({
-            name: ingredient,
-            concern: score.concerns[0] || 'Safety concern detected',
-            severity: concern?.severity || (score.safetyScore < 30 ? 'high' : score.safetyScore < 50 ? 'medium' : 'low'),
-          });
-        }
-
-        // Check for allergens
-        if (score.allergenInfo && score.allergenInfo.length > 0) {
-          allergenMatches.push(...score.allergenInfo);
-        }
-      } else {
-        // Unknown ingredient - neutral score
-        totalScore += 50;
-        validScores++;
+      if (ingData.concerns && ingData.concerns.length > 0) {
+        flaggedIngredients.push({
+          name: ingredientName,
+          concern: ingData.concerns.join(', '),
+          severity: ingData.severity || 'medium',
+        });
       }
 
-      // Check blacklist
-      if (BLACKLISTED_INGREDIENTS.some(bl => normalized.toLowerCase().includes(bl.toLowerCase()))) {
+      if (ingData.allergen_flag || ingData.is_allergen) {
         flaggedIngredients.push({
-          name: ingredient,
-          concern: 'Blacklisted ingredient',
-          severity: 'high',
+          name: ingredientName,
+          concern: 'Known allergen',
+          severity: ingData.allergen_severity || 'medium',
         });
-        totalScore = Math.min(totalScore, 20); // Cap score if blacklisted
       }
     }
 
-    const averageScore = validScores > 0 ? totalScore / validScores : 50;
+    const averageScore = count > 0 ? totalScore / count : 50;
 
     return {
-      score: Math.max(0, Math.min(100, averageScore)), // Clamp between 0-100
+      score: Math.max(0, Math.min(100, averageScore)),
       flaggedIngredients,
-      allergenMatches: allergenMatches.length > 0 ? [...new Set(allergenMatches)] : undefined,
+      allergenMatches: flaggedIngredients
+        .filter(ing => ing.concern.toLowerCase().includes('allergen'))
+        .map(ing => ing.name),
     };
   }
 
   /**
-   * Basic safety score calculation (fallback)
+   * Calculate safety score from local knowledge base
    */
   private calculateBasicSafetyScore(ingredients: string[]): IngredientSafetyData {
     const flaggedIngredients: Array<{ name: string; concern: string; severity: 'low' | 'medium' | 'high' }> = [];
@@ -206,7 +165,6 @@ export class IngredientAdapter {
           severity: concern.severity,
         });
 
-        // Reduce score based on severity
         if (concern.severity === 'high') {
           score -= 20;
         } else if (concern.severity === 'medium') {
@@ -240,4 +198,3 @@ export class IngredientAdapter {
     return name.toLowerCase().trim().replace(/\s+/g, ' ');
   }
 }
-

@@ -61,7 +61,12 @@ export class ScoringEngine {
    */
   private isBlacklisted(product: Product, quizAnswers: UserQuizAnswers): boolean {
     // Check brand blacklist
-    if (this.BLACKLISTED_BRANDS.some(bl => product.brand.toLowerCase().includes(bl.toLowerCase()))) {
+    if (
+      typeof product.brand === 'string' &&
+      this.BLACKLISTED_BRANDS.some(
+        (bl: string) => product.brand.toLowerCase().includes(bl.toLowerCase())
+      )
+    ) {
       return true;
     }
 
@@ -219,10 +224,9 @@ export class ScoringEngine {
     }
 
     // Fetch reviews if not available
-    const reviewData = await this.reviewsAdapter.getProductReviews(
-      product.name,
+    const reviewData = await this.reviewsAdapter.getReviews(
       product.brand,
-      product.upc
+      product.name
     );
 
     if (reviewData) {

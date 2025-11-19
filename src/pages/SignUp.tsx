@@ -30,7 +30,7 @@ const SignUp = () => {
     try {
       setLoading(true);
       await signup(email, password);
-      navigate('/quiz');
+      navigate('/scan');
     } catch (error: any) {
       toast({
         title: "Sign up failed",
@@ -46,7 +46,7 @@ const SignUp = () => {
     try {
       setLoading(true);
       await loginWithGoogle();
-      navigate('/quiz');
+      navigate('/scan');
     } catch (error: any) {
       toast({
         title: "Sign up failed",

@@ -166,9 +166,10 @@ export async function generateRecommendations(
     console.log('[generateRecommendations] Step 1: Querying product sources');
     const productTags = buildProductTags(quizAnswers);
 
+    // Reduce number of products fetched to speed up processing
     const [obfProducts, bfProducts] = await Promise.all([
-      obfAdapter.searchProducts(productTags, 30),
-      bfAdapter.searchProducts(productTags, 30),
+      obfAdapter.searchProducts(productTags, 15), // Reduced from 30 to 15
+      bfAdapter.searchProducts(productTags, 15), // Reduced from 30 to 15
     ]);
 
     console.log(`[generateRecommendations] Found ${obfProducts.length} from OpenBeautyFacts, ${bfProducts.length} from BeautyFeeds`);
@@ -184,22 +185,32 @@ export async function generateRecommendations(
 
     console.log(`[generateRecommendations] ${uniqueProducts.length} unique products after deduplication`);
 
-    // Step 3: Enrich with ingredient safety
+    // Step 3: Enrich with ingredient safety (limit to top 20 for speed)
     console.log('[generateRecommendations] Step 3: Analyzing ingredient safety');
+    const productsToEnrich = uniqueProducts.slice(0, 20); // Limit to top 20
     const enrichedProducts = await Promise.all(
-      uniqueProducts.map(async (product) => {
+      productsToEnrich.map(async (product) => {
         let ingredientSafety = 50;
         if (product.ingredients && product.ingredients.length > 0) {
-          const safetyData = await ingredientAdapter.analyzeIngredientSafety(product.ingredients);
-          ingredientSafety = safetyData.score;
+          try {
+            const safetyData = await ingredientAdapter.analyzeIngredientSafety(product.ingredients);
+            ingredientSafety = safetyData.score;
+          } catch (error) {
+            console.warn('Ingredient safety analysis failed for product:', product.name);
+            // Use default score on error
+          }
         }
         return { ...product, ingredientSafety };
       })
     );
+    
+    // Add remaining products with default safety score
+    const remainingProducts = uniqueProducts.slice(20).map(p => ({ ...p, ingredientSafety: 50 }));
+    const allEnrichedProducts = [...enrichedProducts, ...remainingProducts];
 
     // Step 4: Score products
     console.log('[generateRecommendations] Step 4: Scoring products');
-    const scoredProducts = enrichedProducts.map((product) => {
+    const scoredProducts = allEnrichedProducts.map((product) => {
       const score = scoreProduct(product, quizAnswers, product.ingredientSafety || 50);
       return {
         product,

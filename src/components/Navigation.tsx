@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "../components/NavLink";
 import { Button } from "../components/ui/button";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, User } from "lucide-react";
 //import { cn } from "@/lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -45,6 +45,26 @@ export const Navigation = () => {
                 {item.name}
               </NavLink>
             ))}
+            {currentUser && (
+              <>
+                <NavLink
+                  to="/dashboard"
+                  className="text-sm text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
+                  activeClassName="text-foreground font-medium"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </NavLink>
+                <NavLink
+                  to="/profile"
+                  className="text-sm text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
+                  activeClassName="text-foreground font-medium"
+                >
+                  <User className="w-4 h-4" />
+                  Profile
+                </NavLink>
+              </>
+            )}
             <NavLink to="/scan">
               <Button size="sm" className="bg-white text-primary hover:bg-white/90 font-medium">
                 Start Analysis
@@ -95,6 +115,28 @@ export const Navigation = () => {
                 {item.name}
               </NavLink>
             ))}
+            {currentUser && (
+              <>
+                <NavLink
+                  to="/dashboard"
+                  onClick={() => setIsOpen(false)}
+                  className="text-sm text-foreground/70 hover:text-foreground transition-colors py-2 flex items-center gap-2"
+                  activeClassName="text-foreground font-medium"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </NavLink>
+                <NavLink
+                  to="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="text-sm text-foreground/70 hover:text-foreground transition-colors py-2 flex items-center gap-2"
+                  activeClassName="text-foreground font-medium"
+                >
+                  <User className="w-4 h-4" />
+                  Profile
+                </NavLink>
+              </>
+            )}
             <NavLink to="/scan" onClick={() => setIsOpen(false)}>
               <Button size="sm" className="w-full bg-white text-primary hover:bg-white/90 font-medium">
                 Start Analysis

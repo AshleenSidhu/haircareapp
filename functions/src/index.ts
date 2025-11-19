@@ -3,7 +3,7 @@
  * Main entry point for the recommendation system
  */
 
-import * as functions from 'firebase-functions';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { UserQuizAnswers, RecommendationResult, Product } from './types';
 import { OpenBeautyFactsAdapter } from './adapters/OpenBeautyFactsAdapter';
@@ -13,9 +13,30 @@ import { GoogleReviewsAdapter } from './adapters/GoogleReviewsAdapter';
 import { ScoringEngine } from './scoring/ScoringEngine';
 import { AIAggregator } from './ai/AIAggregator';
 import { ProductDeduplicator } from './utils/deduplicator';
+// Export syncProducts for use in Cloud Functions
+export { syncProducts } from './productSync';
 
-// Initialize Firebase Admin
-admin.initializeApp();
+// Export Products Page functions
+export {
+  getProductDetails,
+  getGoogleReviews,
+  filterProducts,
+  likeProduct,
+  unlikeProduct,
+  getLikedProducts,
+} from './productsPage';
+
+// Initialize Firebase Admin if not already initialized
+try {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+} catch (error: any) {
+  // App already initialized, ignore error
+  if (error.code !== 'app/duplicate-app') {
+    throw error;
+  }
+}
 
 const db = admin.firestore();
 
@@ -23,23 +44,27 @@ const db = admin.firestore();
  * Main Cloud Function: Generate Product Recommendations
  * Triggered by HTTP request or Firestore document creation
  */
-export const generateRecommendations = functions.https.onCall(
-  async (data: { quizAnswers: UserQuizAnswers; userId: string }, context) => {
+export const generateRecommendations = onCall(
+  { 
+    enforceAppCheck: false,
+    region: 'northamerica-northeast1'
+  },
+  async (request) => {
     const startTime = Date.now();
 
     // Verify authentication
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
+    if (!request.auth) {
+      throw new HttpsError(
         'unauthenticated',
         'User must be authenticated to generate recommendations'
       );
     }
 
-    const userId = data.userId || context.auth.uid;
-    const quizAnswers = data.quizAnswers;
+    const userId = request.data.userId || request.auth.uid;
+    const quizAnswers = request.data.quizAnswers;
 
     if (!quizAnswers) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'Quiz answers are required'
       );
@@ -66,7 +91,10 @@ export const generateRecommendations = functions.https.onCall(
         bfAdapter.searchProducts(productTags, 50),
       ]);
 
-      console.log(`[generateRecommendations] Found ${obfProducts.length} from OpenBeautyFacts, ${bfProducts.length} from BeautyFeeds`);
+      console.log(
+        `[generateRecommendations] Found ${obfProducts.length} from OpenBeautyFacts, ` +
+        `${bfProducts.length} from BeautyFeeds`
+      );
 
       // Step 2: Deduplicate products
       console.log('[generateRecommendations] Step 2: Deduplicating products');
@@ -119,7 +147,7 @@ export const generateRecommendations = functions.https.onCall(
       return result;
     } catch (error: any) {
       console.error('[generateRecommendations] Error:', error);
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'internal',
         `Failed to generate recommendations: ${error.message}`
       );
@@ -175,10 +203,9 @@ async function enrichProducts(
 
       // Enrich with reviews
       if (!product.reviews) {
-        product.reviews = await reviewsAdapter.getProductReviews(
-          product.name,
+        product.reviews = await reviewsAdapter.getReviews(
           product.brand,
-          product.upc
+          product.name
         ) || undefined;
       }
 

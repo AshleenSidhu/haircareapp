@@ -11,7 +11,7 @@ export class ProductDeduplicator {
    */
   deduplicate(products: Product[]): Product[] {
     const seen = new Map<string, Product>();
-    const merged: Product[] = [];
+    // const merged: Product[] = []; // Not used, products are returned directly
 
     for (const product of products) {
       const key = this.generateKey(product);

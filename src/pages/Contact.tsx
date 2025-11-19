@@ -14,7 +14,7 @@ const Contact = () => {
 
   return (
     <Layout showBackButton>
-      <div className="max-w-5xl mx-auto px-4 py-12">
+      <div className="max-w-5xl mx-auto px-4 pt-24 pb-12">
         <div className="text-center mb-12 fade-in">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">Get in Touch</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

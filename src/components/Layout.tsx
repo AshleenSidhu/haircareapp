@@ -7,16 +7,17 @@ import { ArrowLeft } from "lucide-react";
 interface LayoutProps {
   children: ReactNode;
   showBackButton?: boolean;
+  hideNavigation?: boolean;
 }
 
-export const Layout = ({ children, showBackButton = false }: LayoutProps) => {
+export const Layout = ({ children, showBackButton = false, hideNavigation = false }: LayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isHomePage = location.pathname === "/";
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      {!hideNavigation && <Navigation />}
       
       {showBackButton && !isHomePage && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
