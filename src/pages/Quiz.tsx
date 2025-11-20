@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowLeft, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useAuth } from "@/contexts/AuthContext";
-import { db } from "@/lib/firebase";
+import { Button } from "components/ui/button";
+import { Card } from "components/ui/card";
+import { RadioGroup, RadioGroupItem } from "components/ui/radio-group";
+import { Label } from "components/ui/label";
+import { Input } from "components/ui/input";
+import { Checkbox } from "components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "components/ui/collapsible";
+import { useAuth } from "contexts/AuthContext";
+import { db } from "lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "hooks/use-toast";
 
 const questions = [
   {
