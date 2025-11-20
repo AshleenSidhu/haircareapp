@@ -8,13 +8,13 @@ import { useNavigate } from "react-router-dom";
 
 const baseNavigationItems = [
   { name: "Home", path: "/" },
-  { name: "Chat", path: "/chat" },
   { name: "Tips", path: "/tips" },
   { name: "About", path: "/about" },
   { name: "Contact", path: "/contact" },
 ];
 
 const authenticatedNavigationItems = [
+  { name: "Chat", path: "/chat" },
   { name: "Products", path: "/products" },
   { name: "Community", path: "/community" },
 ];
