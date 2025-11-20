@@ -4,24 +4,26 @@
     "brand": "SheaMoisture",
     "title": "Coconut & Hibiscus Curl Enhancing Smoothie",
     "productType": "Curl Cream",
-    "productPageUrl": "https://www.amazon.ca/Shea-Moisture-Hibiscus-Enhancing-Milliliters/dp/B083W5G4VM/ref=asc_df_B083W5G4VM?mcid=d0e0e8dec9913fb39afedd84b9c8ed17&tag=googleshopc0c-20&linkCode=df0&hvadid=706725225036&hvpos=&hvnetw=g&hvrand=14325860200711424689&hvpone=&hvptwo=&hvqmt=&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=9000404&hvtargid=pla-1125330233032&psc=1&hvocijid=14325860200711424689-B083W5G4VM-&hvexpln=0&gad_source=1",
+    "productPageUrl": "https://www.amazon.ca/Shea-Moisture-Hibiscus-Enhancing-Milliliters/dp/B083W5G4VM/",
     "imageUrl": "/product_database/img_products/71wasDuGF-L.jpg",
     "price": 11.99,
     "currency": "USD",
     "ingredients": ["Water", "Coconut Oil", "Shea Butter", "Silk Protein", "Neem Oil", "Fragrance"],
-    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Curly", "Coily"]
   },
   {
     "id": "curl-002",
     "brand": "DevaCurl",
     "title": "SuperCream Coconut Curl Styler",
     "productType": "Curl Cream",
-    "productPageUrl": "https://www.walmart.ca/en/ip/Supercream-Coconut-Curl-Styler-by-DevaCurl-for-Unisex-5-1-oz-Cream/50NLQSLDMK0L?selectedSellerId=6754F5B1F01040D888757D1A8051102B&cmpid=SEM_CA_616_8S1GFEDU95_22454376944_183395261732&utm_id=SEM_CA_616_8S1GFEDU95_22454376944_183395261732&utm_medium=paid_search&utm_source=google&utm_campaign=always_on&gclsrc=aw.ds&gad_source=1&gad_campaignid=22454376944&gbraid=0AAAAADv6L0Q6sV1nqRgYLatoiv-PB_c-v&gclid=CjwKCAiAlfvIBhA6EiwAcErpyaLVNDXP8efclAqUYDLcAdmgPRUuou8-FrvoIhH5k54VtwQUwGAh-BoCgMwQAvD_BwE",
+    "productPageUrl": "https://www.walmart.ca/en/ip/Supercream-Coconut-Curl-Styler/",
     "imageUrl": "/product_database/img_products/devacurl.jpg",
     "price": 28.00,
     "currency": "USD",
     "ingredients": ["Water", "Coconut Oil", "Beeswax", "Hydroxyethylcellulose", "Fragrance"],
-    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Wavy", "Curly"]
   },
   {
     "id": "curl-003",
@@ -33,79 +35,86 @@
     "price": 6.00,
     "currency": "USD",
     "ingredients": ["Water", "Coconut Oil", "Shea Butter", "Fragrance", "Glycerin"],
-    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Curly", "Coily"]
   },
   {
     "id": "curl-004",
     "brand": "Moroccanoil",
     "title": "Curl Defining Cream",
     "productType": "Curl Cream",
-    "productPageUrl": "https://www.sephora.com/product/curl-defining-cream-P412095?country_switch=ca&skuId=1926971&om_mmc=ppc-GG_20553537832___1926971__9000404_c&gclsrc=aw.ds&gad_source=1&gad_campaignid=20543819901&gbraid=0AAAAADnIXb0DwG-LWQwU7vebmordvyYgl&gclid=CjwKCAiAlfvIBhA6EiwAcErpySpmqwmzhLvHrGYYhrm8zIfU7u96-QRWKXWkSnVGUxOunj3jXQNLIBoC1_cQAvD_BwE",
+    "productPageUrl": "https://www.sephora.com/product/curl-defining-cream-P412095",
     "imageUrl": "/product_database/img_products/morocanoil.jpg",
     "price": 34.00,
     "currency": "USD",
     "ingredients": ["Water", "Argan Oil", "PVP", "Dimethicone", "Fragrance"],
-    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": false, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": false, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Wavy", "Curly"]
   },
   {
     "id": "curl-005",
     "brand": "Aunt Jackie's",
     "title": "Curl La La Defining Curl Custard",
     "productType": "Curl Cream",
-    "productPageUrl": "https://www.auntjackiescurlsandcoils.com/products/curl-la-la-defining-curl-custard?srsltid=AfmBOopOLgzys5Gjgw04Sh1xSIlyz-XYEJ71h6IV7RRrXqe-b07t3wQh",
+    "productPageUrl": "https://www.auntjackiescurlsandcoils.com/products/curl-la-la-defining-curl-custard",
     "imageUrl": "/product_database/img_products/auntjackie.jpg",
     "price": 5.59,
     "currency": "USD",
     "ingredients": ["Water", "Glycerin", "Olive Oil", "Shea Butter", "Fragrance"],
-    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Curly", "Coily"]
   },
   {
     "id": "shamp-001",
     "brand": "Ouidad",
     "title": "Advanced Climate Control Defrizzing Shampoo",
     "productType": "Shampoo",
-    "productPageUrl": "https://www.ouidad.com/products/advanced-climate-control-defrizzing-shampoo?srsltid=AfmBOoo7T6Qjz3FfqV15YCGHlVZ1a-hTgMoZv5-OIogDqBjYA7OoLB7H",
+    "productPageUrl": "https://www.ouidad.com/products/advanced-climate-control-defrizzing-shampoo",
     "imageUrl": "/product_database/img_products/ouidad.jpg",
     "price": 24.00,
     "currency": "USD",
     "ingredients": ["Water", "Cocamidopropyl Betaine", "Polyquaternium-7", "Fragrance"],
-    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Wavy", "Curly"]
   },
   {
     "id": "shamp-002",
     "brand": "SheaMoisture",
     "title": "Manuka Honey & Yogurt Hydrate + Repair Shampoo",
     "productType": "Shampoo",
-    "productPageUrl": "https://www.sheamoisture.com/us/en/p/manuka-honey-&-yogurt-hydrate-&-repair-shampoo.html/00764302231530",
+    "productPageUrl": "https://www.sheamoisture.com/us/en/p/manuka-honey-&-yogurt-hydrate-&-repair-shampoo.html",
     "imageUrl": "/product_database/img_products/manuka_shea.jpg",
     "price": 11.49,
     "currency": "USD",
     "ingredients": ["Water", "Shea Butter", "Honey", "Yogurt Extract", "Fragrance"],
-    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Curly", "Coily"]
   },
   {
     "id": "shamp-003",
     "brand": "DevaCurl",
     "title": "No-Poo Original Zero Lather Cleanser",
     "productType": "Shampoo",
-    "productPageUrl": "https://www.devacurl.com/us/products/cleansers/no-poo-original/v/39401432907916",
+    "productPageUrl": "https://www.devacurl.com/us/products/cleansers/no-poo-original",
     "imageUrl": "/product_database/img_products/devacurl_nopoo.jpg",
     "price": 28.00,
     "currency": "USD",
     "ingredients": ["Water", "Cocamidopropyl Betaine", "Glycerin", "Mentha Piperita Oil", "Fragrance"],
-    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Wavy", "Curly"]
   },
   {
     "id": "shamp-004",
     "brand": "Bounce Curl",
     "title": "Enzyme Gentle Clarifying Shampoo",
     "productType": "Shampoo",
-    "productPageUrl": "https://www.bouncecurl.com/en-ca/products/enzyme-gentle-clarifying-shampoo?srsltid=AfmBOor1-vUXigwMonRClWdMLo0PH25Zx0q8VQYdkWIqKkl6GSXIUwCK",
+    "productPageUrl": "https://www.bouncecurl.com/en-ca/products/enzyme-gentle-clarifying-shampoo",
     "imageUrl": "/product_database/img_products/bounce_curl.jpg",
     "price": 20.00,
     "currency": "USD",
     "ingredients": ["Water", "Cocamidopropyl Betaine", "Fruit Enzymes", "Aloe Vera Juice", "Fragrance"],
-    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy"]
   },
   {
     "id": "shamp-005",
@@ -117,43 +126,34 @@
     "price": 20.00,
     "currency": "USD",
     "ingredients": ["Water", "Cocamidopropyl Betaine", "Honey", "Shea Butter", "Fragrance"],
-    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true}
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Curly", "Coily"]
   },
   {
     "id": "shampoo-006",
     "brand": "Olaplex",
     "title": "No.4 Bond Maintenance Shampoo",
     "productType": "Shampoo",
-    "productPageUrl": "https://ca.olaplex.com/products/olaplex-n-4-bond-maintenance-shampoo-ca?utm_source=google&utm_medium=cpc&utm_campaign=21801744235&utm_content=&utm_term=734014789820&gad_source=1&gad_campaignid=21801744235&gbraid=0AAAAADI50hLvpzpFX6RZ6riNhJJlYR8bm&gclid=CjwKCAiAlfvIBhA6EiwAcErpyXw85gECERAwiQlAK0-hDNkgBh7QaecpS5d0G6ufYai1NjoASayk7hoCzXYQAvD_BwE",
+    "productPageUrl": "https://ca.olaplex.com/products/olaplex-n-4-bond-maintenance-shampoo-ca",
     "imageUrl": "/product_database/img_products/olaplex.jpg",
     "price": 30.00,
     "currency": "USD",
     "ingredients": ["Water", "Sodium Lauroyl Methyl Isethionate", "Cocamidopropyl Betaine", "Olaplex Bond Building Technology", "Fragrance"],
-    "tags": {
-      "vegan": true,
-      "sulfateFree": true,
-      "siliconeFree": true,
-      "parabenFree": true,
-      "crueltyFree": true
-    }
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy"]
   },
   {
     "id": "conditioner-001",
     "brand": "Bumble and Bumble",
     "title": "Bond-Building Repair Conditioner",
     "productType": "Conditioner",
-    "productPageUrl": "https://www.bumbleandbumble.ca/product/19048/85065/care/conditioners/bond-building-hair-repair-conditioner?srsltid=AfmBOooVa5z1lyPbz4npVWwSeb1oJS-ZJHG8mp0VYoiMze4XUkloszYP",
+    "productPageUrl": "https://www.bumbleandbumble.ca/product/19048/85065/care/conditioners/bond-building-hair-repair-conditioner",
     "imageUrl": "/product_database/img_products/bumblebumble.png",
     "price": 34.00,
     "currency": "USD",
     "ingredients": ["Water", "Cetyl Alcohol", "Stearyl Alcohol", "Fragrance", "Sunflower Seed Oil"],
-    "tags": {
-      "vegan": true,
-      "sulfateFree": true,
-      "siliconeFree": true,
-      "parabenFree": true,
-      "crueltyFree": true
-    }
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy"]
   },
   {
     "id": "oil-001",
@@ -165,13 +165,8 @@
     "price": 48.00,
     "currency": "USD",
     "ingredients": ["Argan Oil", "Cyclopentasiloxane", "Dimethicone", "Fragrance"],
-    "tags": {
-      "vegan": false,
-      "sulfateFree": true,
-      "siliconeFree": false,
-      "parabenFree": true,
-      "crueltyFree": true
-    }
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": false, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy"]
   },
   {
     "id": "mask-001",
@@ -183,13 +178,8 @@
     "price": 39.00,
     "currency": "USD",
     "ingredients": ["Water", "Shea Butter", "Rosehip Oil", "Algae Extract", "Fragrance"],
-    "tags": {
-      "vegan": true,
-      "sulfateFree": true,
-      "siliconeFree": true,
-      "parabenFree": true,
-      "crueltyFree": true
-    }
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Wavy", "Curly", "Coily"]
   },
   {
     "id": "heat-protectant-001",
@@ -201,30 +191,86 @@
     "price": 7.99,
     "currency": "USD",
     "ingredients": ["Water", "Polyimide-1", "Hydrolyzed Silk", "Citric Acid", "Fragrance"],
-    "tags": {
-      "vegan": false,
-      "sulfateFree": true,
-      "siliconeFree": false,
-      "parabenFree": true,
-      "crueltyFree": false
-    }
+    "tags": {"vegan": false, "sulfateFree": true, "siliconeFree": false, "parabenFree": true, "crueltyFree": false},
+    "recommendedFor": ["Straight", "Wavy", "Curly"]
   },
- {
+  {
     "id": "scalp-treatment-001",
     "brand": "The Ordinary",
     "title": "Multi-Peptide Serum for Hair Density",
     "productType": "Scalp Treatment",
     "productPageUrl": "https://www.sephora.com/ca/en/product/multi-peptide-serum-for-hair-density-P442831",
-    "imageUrl": "/public/product_database/img_products/ordinary.png",
+    "imageUrl": "/product_database/img_products/ordinary.png",
     "price": 23.00,
     "currency": "USD",
     "ingredients": ["Water", "Glycerin", "Caffeine", "Castor Oil", "Peptides"],
-    "tags": {
-      "vegan": true,
-      "sulfateFree": true,
-      "siliconeFree": true,
-      "parabenFree": true,
-      "crueltyFree": true
-    }
-    }
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy", "Curly", "Coily"]
+  },
+  {
+    "id": "pureology-001",
+    "brand": "Pureology",
+    "title": "Smooth Perfection Shampoo",
+    "productType": "Shampoo",
+    "productPageUrl": "https://www.sephora.com/ca/en/product/pureology-smooth-perfection-shampoo-P461624",
+    "imageUrl": "/product_database/img_products/pureology.jpg",
+    "price": 34.00,
+    "currency": "USD",
+    "ingredients": ["Water", "Sodium Laureth Sulfate", "Camelina Oil", "Shea Butter", "Fragrance"],
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy"]
+  },
+  {
+    "id": "pureology-002",
+    "brand": "Pureology",
+    "title": "Hydrate Moisturizing Shampoo",
+    "productType": "Shampoo",
+    "productPageUrl": "https://chatters.ca/pureology-hydrate-shampoo?srsltid=AfmBOoqujQtUS9mF6KRlJR6OwwCtR8sZz8WQnGfF_IkMMsk8mIKI246M",
+    "imageUrl": "/product_database/img_products/pur.jpg",
+    "price": 34.00,
+    "currency": "USD",
+    "ingredients": ["Water", "Hydrolyzed Soy Protein", "Jojoba Oil", "Green Tea", "Peppermint Oil", "Fragrance"],
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy"]
+  },
+  {
+    "id": "davines-001",
+    "brand": "Davines",
+    "title": "Volu Volume Enhancing Shampoo",
+    "productType": "Shampoo",
+    "productPageUrl": "https://www.sephora.com/ca/en/product/davines-volu-volumizing-shampoo-for-fine-hair-P512760",
+    "imageUrl": "/product_database/img_products/volu.jpg",
+    "price": 34.00,
+    "currency": "USD",
+    "ingredients": ["Water", "Sodium Laureth Sulfate", "Turnip Extract", "Panthenol", "Fragrance"],
+    "tags": {"vegan": false, "sulfateFree": false, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Fine"]
+  },
+  {
+    "id": "amika-001",
+    "brand": "Amika",
+    "title": "Normcore Signature Conditioner",
+    "productType": "Conditioner",
+    "productPageUrl": "https://loveamika.ca/products/normcore-signature-conditioner?variant=41477607227572",
+    "imageUrl": "/product_database/img_products/amika.jpg",
+    "price": 26.00,
+    "currency": "USD",
+    "ingredients": ["Water", "Sea Buckthorn", "Shea Butter", "Glycerin", "Fragrance"],
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Fine"]
+  },
+  {
+    "id": "amika-002",
+    "brand": "Amika",
+    "title": "The Kure Bond Repair Shampoo",
+    "productType": "Shampoo",
+    "productPageUrl": "https://www.sephora.com/ca/en/product/the-kure-strength-repair-shampoo-P501714",
+    "imageUrl": "/product_database/img_products/amika_2.jpg",
+    "price": 26.00,
+    "currency": "USD",
+    "ingredients": ["Water", "Sea Buckthorn", "Bond Cure Technology", "Shea Butter", "Fragrance"],
+    "tags": {"vegan": true, "sulfateFree": true, "siliconeFree": true, "parabenFree": true, "crueltyFree": true},
+    "recommendedFor": ["Straight", "Wavy", "Damaged"]
+  }
+
 ]

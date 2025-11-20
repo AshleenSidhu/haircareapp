@@ -104,11 +104,15 @@ const Results = () => {
         productQualities: answers.productQualities || []
       });
 
+      console.log("Translated profile:", translated);
+
       // Step 2 — Filter + score products using your database
       const filteredProducts = filterAndScoreProducts(productsDB, translated);
 
+      console.log("Filtered products:", filteredProducts);
+
       // Step 3 — Save results (top 10)
-      setRecommendations(filteredProducts.slice(0, 10));
+      setRecommendations(filteredProducts.slice(0, 4));
 
     } catch (error: any) {
       console.error("Recommendation error:", error);
@@ -237,6 +241,8 @@ const Results = () => {
               const explanation =
                 product.explanation || "This product matches your hair profile.";
               const scoreBreakdown = product.scoreBreakdown || {};
+              const price = product.price ? `$${product.price}` : null;
+              const link = product.productPageUrl || null;
 
               return (
                 <Card
@@ -257,7 +263,7 @@ const Results = () => {
                       </div>
                     )}
 
-                    {/* HEADER + BRAND + EXPLANATION */}
+                    {/* NAME, BRAND, PRICE, LINK */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-2xl text-foreground font-semibold">
@@ -270,10 +276,30 @@ const Results = () => {
                       </div>
 
                       {brand && (
-                        <p className="text-muted-foreground mb-2 text-sm">{brand}</p>
+                        <p className="text-muted-foreground mb-1 text-sm">{brand}</p>
                       )}
 
-                      <p className="text-muted-foreground text-sm">{explanation}</p>
+                      {/* PRICE */}
+                      {price && (
+                        <p className="text-sm font-medium text-primary mb-1">
+                          {price}
+                        </p>
+                      )}
+
+                      {/* PRODUCT LINK */}
+                      {link && (
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 underline text-sm"
+                        >
+                          View product page →
+                        </a>
+                      )}
+
+                      {/* AI EXPLANATION */}
+                      <p className="text-muted-foreground mt-3 text-sm">{explanation}</p>
                     </div>
 
                     {/* SCORE BREAKDOWN */}

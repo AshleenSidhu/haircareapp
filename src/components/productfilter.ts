@@ -42,6 +42,14 @@ export function filterAndScoreProducts(
       return false;
     }
 
+    // Hair type filter → must match list from IngredientTranslation
+    if (
+      user.matchingHairTypeProducts &&
+      !user.matchingHairTypeProducts.includes(product.id)
+    ) {
+      return false;
+    }
+
     // Negative ingredient filter (allergies, sensitivities, etc.)
     const productIngredientsLower = product.ingredients.map((i) =>
       i.toLowerCase()
@@ -75,6 +83,11 @@ export function filterAndScoreProducts(
     // Product type match
     if (user.recommendedProductTypes.includes(product.productType)) {
       score += 5;
+    }
+
+    // Hair type scoring → extra bonus if matched
+    if (user.matchingHairTypeProducts.includes(product.id)) {
+      score += 15; // strong weight for correct hair type
     }
 
     // Tag matching: sulfate-free, vegan, silicone-free...

@@ -1,7 +1,7 @@
 // types.ts ---------------------------------------------------------
 
 export interface UserProfile {
-  hairType: "Straight" | "Wavy" | "Curly" | "Kinky" | "Dreadlocks";
+  hairType: "Straight" | "Wavy" | "Curly" | "Coily" | "Dreadlocks";
   thickness: "Fine" | "Medium" | "Thick";
   porosity: "Low" | "Medium" | "High";
   shampoo: "Less than once a month" | "Once a week" | "Two to three times a week" | "Every day";
@@ -32,4 +32,5 @@ export interface IngredientTranslation {
   brandToAvoid: string;
   budget: string;
   productQualities: string[];
+  matchingHairTypeProducts: string[];
 }

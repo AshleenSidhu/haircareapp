@@ -1,12 +1,13 @@
-// ingredientTranslation.ts ----------------------------------------------------
-
+// ingredientTranslation.ts
 import { UserProfile, IngredientTranslation } from "./userprofiletypes";
+import products from "../data/products.json"; // <-- ADD THIS
 
 export function translateToIngredients(profile: UserProfile): IngredientTranslation {
   const positive: Set<string> = new Set();
   const negative: Set<string> = new Set();
   const notes: Set<string> = new Set();
   const recommendedProducts: Set<string> = new Set();
+  const matchingHairTypeProducts: Set<string> = new Set(); // <-- NEW
 
   // ---------------------------
   // 1. Hair Type Mapping
@@ -15,11 +16,23 @@ export function translateToIngredients(profile: UserProfile): IngredientTranslat
     Straight: ["light humectants", "aloe", "panthenol", "glycerin"],
     Wavy: ["aloe", "beta-glucan", "light conditioning polymers"],
     Curly: ["shea butter", "avocado oil", "coconut oil (if no allergy)", "polyquaternium"],
-    Kinky: ["castor oil", "mango butter", "ceramides", "rich emollients"],
+    Coily: ["castor oil", "mango butter", "ceramides", "rich emollients"],
     Dreadlocks: ["lightweight oils", "residue-free formulas", "clarifying agents"]
   };
 
-  hairTypeMap[profile.hairType].forEach((i) => positive.add(i));
+  hairTypeMap[profile.hairType]?.forEach((i) => positive.add(i));
+
+  // ---------------------------
+  // NEW: Hair type → Product filtering
+  // ---------------------------
+
+  products.forEach((prod: any) => {
+    if (Array.isArray(prod.recommendedFor)) {
+      if (prod.recommendedFor.includes(profile.hairType)) {
+        matchingHairTypeProducts.add(prod.id);
+      }
+    }
+  });
 
   // ---------------------------
   // 2. Porosity Mapping
@@ -30,7 +43,7 @@ export function translateToIngredients(profile: UserProfile): IngredientTranslat
     High: ["bond builders (Olaplex-type)", "ceramides", "castor oil", "argan oil", "occlusives"]
   };
 
-  porosityMap[profile.porosity].forEach((i) => positive.add(i));
+  porosityMap[profile.porosity]?.forEach((i) => positive.add(i));
 
   // ---------------------------
   // 3. Concerns Mapping
@@ -87,8 +100,7 @@ export function translateToIngredients(profile: UserProfile): IngredientTranslat
     const normalized = a.toLowerCase();
     negative.add(normalized);
 
-    // remove matching positives
-    [...positive].forEach((p) => {
+    Array.from(positive).forEach((p) => {
       if (p.toLowerCase().includes(normalized)) {
         positive.delete(p);
         notes.add(`Removed ${p} due to allergy: ${a}`);
@@ -142,6 +154,7 @@ export function translateToIngredients(profile: UserProfile): IngredientTranslat
     positiveIngredients: Array.from(positive),
     negativeIngredients: Array.from(negative),
     recommendedProductTypes: Array.from(recommendedProducts),
+    matchingHairTypeProducts: Array.from(matchingHairTypeProducts), // <-- NEW
     notes: Array.from(notes),
     brandToAvoid: profile.brandAvoid,
     budget: profile.budget,
