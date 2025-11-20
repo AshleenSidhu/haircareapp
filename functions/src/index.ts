@@ -5,6 +5,20 @@
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load .env from project root so environment variables (like GEMINI_API_KEY)
+// are available to functions during local development / emulator runs.
+// We resolve the path relative to this file's compiled location so it works
+// whether running from `src` during ts-node or from `lib` after build.
+try {
+  const envPath = path.resolve(__dirname, '../../.env');
+  dotenv.config({ path: envPath });
+  console.log('[init] Loaded .env from', envPath);
+} catch (e: any) {
+  console.warn('[init] Could not load .env file:', e?.message || e);
+}
 import { UserQuizAnswers, RecommendationResult, Product } from './types';
 import { OpenBeautyFactsAdapter } from './adapters/OpenBeautyFactsAdapter';
 import { BeautyFeedsAdapter } from './adapters/BeautyFeedsAdapter';

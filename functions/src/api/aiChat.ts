@@ -7,12 +7,27 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as functions from 'firebase-functions';
 import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Ensure local .env is loaded for emulator / local runs so keys like
+// GEMINI_API_KEY (stored at repo root) are available via process.env.
+try {
+  const envPath = path.resolve(__dirname, '../../.env');
+  dotenv.config({ path: envPath });
+  console.log('[aiChat] Loaded .env from', envPath);
+} catch (e: any) {
+  // Non-fatal if .env not present in production
+  console.debug('[aiChat] No local .env loaded:', e?.message || e);
+}
 
 export const chatWithAI = onCall(
   {
     enforceAppCheck: false,
     region: 'northamerica-northeast1',
     timeoutSeconds: 60,
+    secrets: ['GEMINI_API_KEY'], // Grant access to the secret (will be available as process.env.GEMINI_API_KEY)
   },
   async (request) => {
     // Verify authentication
@@ -77,7 +92,8 @@ async function callAzureOpenAI(messages: any[], context?: any) {
   if (!azureEndpoint || !azureApiKey) {
     throw new HttpsError(
       'failed-precondition',
-      'Azure OpenAI configuration not found. Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables or use Firebase Runtime Config.'
+      'Azure OpenAI configuration not found. Set AZURE_OPENAI_ENDPOINT and '
+      + 'AZURE_OPENAI_API_KEY environment variables or use Firebase Runtime Config.'
     );
   }
 
@@ -137,91 +153,117 @@ async function callAzureOpenAI(messages: any[], context?: any) {
  */
 async function callGeminiAPI(messages: any[], context?: any) {
   // Get Gemini API key - try multiple sources
-  // Priority: 1) Environment variable, 2) Firebase Runtime Config via functions.config()
-  let geminiApiKey = process.env.GEMINI_API_KEY;
-  
+  // Priority: 1) Secret Manager (via process.env), 2) Environment variable, 3) Firebase Runtime Config
+  // Note: When 'GEMINI_API_KEY' is in the secrets array, it's automatically available as process.env.GEMINI_API_KEY
+  let geminiApiKey = process.env.GEMINI_API_KEY 
+    || process.env.REACT_APP_GEMINI_API_KEY;
+
   // Try Firebase Runtime Config (set via: firebase functions:config:set gemini.api_key="your-key")
   if (!geminiApiKey) {
     try {
-      // For Firebase Functions v2, config() should work but may need to be called differently
       const config = functions.config();
       console.log('[callGeminiAPI] Config object keys:', Object.keys(config || {}));
-      geminiApiKey = config?.gemini?.api_key as string | undefined;
+      // Try several possible shapes for the config
+      geminiApiKey = config?.gemini?.api_key as string | undefined
+        || config?.gemini_api_key as string | undefined
+        || config?.gemini?.key as string | undefined;
+
       if (geminiApiKey) {
-        console.log('[callGeminiAPI] Found API key in Firebase Runtime Config');
+        console.log('[callGeminiAPI] Found Gemini API key in Firebase Runtime Config');
       } else {
-        console.warn('[callGeminiAPI] Config exists but gemini.api_key not found. Config structure:', JSON.stringify(config, null, 2));
+        console.warn('[callGeminiAPI] Config exists but Gemini key not found. Keys:', Object.keys(config || {}));
       }
     } catch (e: any) {
-      console.error('[callGeminiAPI] Error reading from functions.config():', e.message, e.stack);
+      console.error('[callGeminiAPI] Error reading from functions.config():', e?.message || e);
     }
   }
-  
+
+  // If there is still no Gemini key, attempt to fallback to OpenAI if available
   if (!geminiApiKey) {
-    console.error('[callGeminiAPI] API key not found. Checked:');
-    console.error('  - process.env.GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'found' : 'not found');
+    console.error('[callGeminiAPI] Gemini API key not found. Checked process.env and functions.config()');
+
+    // Inspect OpenAI availability
+    const openaiKey = process.env.OPENAI_API_KEY || ((): string | undefined => {
+      try { return functions.config().openai?.api_key as string | undefined; } catch { return undefined; }
+    })();
+
+    if (openaiKey) {
+      console.warn('[callGeminiAPI] No Gemini key, but OpenAI API key present — falling back to OpenAI');
+      // Use OpenAI fallback
+      return await callOpenAIAPI(messages, context);
+    }
+
+    // Nothing to fall back to — provide clearer guidance in the error
     try {
       const config = functions.config();
       console.error('  - functions.config() exists:', !!config);
-      console.error('  - functions.config().gemini:', config?.gemini ? JSON.stringify(Object.keys(config.gemini)) : 'not found');
-      console.error('  - Full config keys:', Object.keys(config || {}));
+      console.error('  - functions.config() keys:', Object.keys(config || {}));
     } catch (e: any) {
-      console.error('  - functions.config() error:', e.message);
+      console.error('  - functions.config() error:', e?.message || e);
     }
+
     throw new HttpsError(
       'failed-precondition',
-      'Gemini API key not configured. Set GEMINI_API_KEY environment variable or use: firebase functions:config:set gemini.api_key="your-key"'
+      'Gemini API key not configured. Set GEMINI_API_KEY environment variable, '
+      + 'add GEMINI_API_KEY to your deployment, or set Firebase Runtime Config '
+      + '(e.g. firebase functions:config:set gemini.api_key="your-key"). '
+      + 'Alternatively, set OPENAI_API_KEY to enable an OpenAI fallback.'
     );
   }
 
   // Build system instruction with context
   const systemInstruction = buildSystemPrompt(context);
 
-  // Convert messages to Gemini format
-  // Gemini uses a different format - combine system instruction with first user message
-  const geminiMessages = messages.map((m: any) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
+  // Initialize Google Generative AI client
+  // The SDK reads GEMINI_API_KEY from process.env automatically, but we can also pass it explicitly
+  const ai = new GoogleGenAI({
+    apiKey: geminiApiKey,
+  });
 
-  // Add system instruction as the first message
-  const requestBody = {
-    contents: geminiMessages,
-    systemInstruction: {
-      parts: [{ text: systemInstruction }],
-    },
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 1000,
-    },
-  };
-
-  // Call Gemini API
-  const model = 'gemini-1.5-flash'; // or 'gemini-1.5-pro' for better quality
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    }
-  );
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Gemini API error: ${response.statusText} - ${JSON.stringify(errorData)}`);
+  // Build the conversation content
+  // The SDK expects contents as a string or structured format
+  // For chat conversations, we'll format the messages properly
+  let contents: string | any = '';
+  
+  // If we have a system instruction, prepend it
+  if (systemInstruction) {
+    contents = `${systemInstruction}\n\n`;
   }
 
-  const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  // Build conversation from messages
+  // Format: combine all messages into a coherent conversation
+  const conversationParts: string[] = [];
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      conversationParts.push(`User: ${msg.content}`);
+    } else if (msg.role === 'assistant') {
+      conversationParts.push(`Assistant: ${msg.content}`);
+    }
+  }
+  
+  contents += conversationParts.join('\n\n');
+  contents += '\n\nAssistant:';
 
-  return {
-    content,
-    model: model,
-    usage: data.usageMetadata,
-  };
+  try {
+    // Call Gemini API using the SDK
+    // Available models: gemini-2.5-flash, gemini-1.5-pro, gemini-1.5-flash, gemini-pro
+    const model = 'gemini-2.5-flash'; // Use the latest model
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: contents,
+    });
+
+    const content = response.text || '';
+
+    return {
+      content,
+      model: model,
+      usage: response.usageMetadata || {},
+    };
+  } catch (error: any) {
+    console.error('[callGeminiAPI] SDK error:', error);
+    throw new Error(`Gemini API error: ${error.message || 'Unknown error'}`);
+  }
 }
 
 /**
@@ -242,7 +284,9 @@ async function callOpenAIAPI(messages: any[], context?: any) {
   if (!openaiApiKey) {
     throw new HttpsError(
       'failed-precondition',
-      'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable or use: firebase functions:config:set openai.api_key="your-key"'
+      'OpenAI API key not configured. Please set OPENAI_API_KEY environment '
+      + 'variable or use Firebase Runtime Config: '
+      + 'firebase functions:config:set openai.api_key="your-key"'
     );
   }
 
