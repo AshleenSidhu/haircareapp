@@ -20,7 +20,7 @@ const Scan = () => {
 
   // Simple label list for classification
   // (Replace with your actual hair type labels)
-  const labels = ["Straight", "Wavy", "Curly", "Kinky", "Dreadlocks"];
+  const labels = ["Straight", "Wavy", "Curly", "Coily", "Dreadlocks"];
 
   // Redirect user if quiz is already done
   useEffect(() => {

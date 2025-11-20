@@ -26,7 +26,7 @@ const questions = [
     id: "hairType",
     question: "Detected hair type (you can change it):",
     type: "single",
-    options: ["Straight", "Wavy", "Curly", "Kinky", "Dreadlocks"]
+    options: ["Straight", "Wavy", "Curly", "Coily", "Dreadlocks"]
   },
   {
     id: "thickness",
