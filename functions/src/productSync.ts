@@ -8,6 +8,7 @@ import * as admin from 'firebase-admin';
 import { OpenBeautyFactsAdapter } from './adapters/OpenBeautyFactsAdapter';
 import { CosIngAdapter } from './adapters/CosIngAdapter';
 import { parseIngredientsText, extractINCIFromIngredients } from './utils/ingredientNormalizer';
+import { EcoScoreCalculator } from './utils/ecoScoreCalculator';
 
 // Initialize Firebase Admin if not already initialized
 try {
@@ -23,6 +24,7 @@ try {
 const db = admin.firestore();
 const obfAdapter = new OpenBeautyFactsAdapter();
 const cosingAdapter = new CosIngAdapter();
+const ecoScoreCalculator = new EcoScoreCalculator();
 
 /**
  * Sync products from Open Beauty Facts
@@ -275,8 +277,41 @@ async function transformProduct(product: any): Promise<any> {
     ingredients: product.images?.ingredients || undefined,
   };
   
+  // Initialize images_stored field (null by default, will be populated by downloadAndStoreImage function)
+  const images_stored = product.images_stored || {
+    storage_url: null,
+    stored_at: null,
+  };
+  
   // Also preserve last_modified_server if available
   const lastModifiedServer = product.last_modified_server || product.last_modified_t;
+
+  // Calculate eco score
+  let ecoScoreData: any = {};
+  try {
+    // Convert to Product format for eco score calculator
+    const productForEcoScore: any = {
+      id: product.id || product.upc || product.barcode,
+      name: product.name,
+      brand: product.brand,
+      ingredients: normalized_ingredients.length > 0 ? normalized_ingredients : (product.ingredients || []),
+      tags: product.tags || categories || [],
+    };
+
+    const ecoScoreResult = ecoScoreCalculator.calculateEcoScore(productForEcoScore);
+    ecoScoreData = {
+      eco_score: ecoScoreResult.score,
+      eco_grade: ecoScoreResult.grade,
+      eco_reasoning: ecoScoreResult.reasoning,
+      eco_positive_factors: ecoScoreResult.positiveFactors,
+      eco_negative_factors: ecoScoreResult.negativeFactors,
+      eco_recommendations: ecoScoreResult.recommendations,
+    };
+    console.log(`[transformProduct] Calculated eco score for ${product.name}: ${ecoScoreResult.score} (${ecoScoreResult.grade})`);
+  } catch (ecoError: any) {
+    console.warn(`[transformProduct] Error calculating eco score:`, ecoError.message);
+    // Continue without eco score if calculation fails
+  }
 
   // Build product data in new schema
   const productData: any = {
@@ -290,6 +325,7 @@ async function transformProduct(product: any): Promise<any> {
     normalized_ingredients,
     ingredient_science: ingredientScience.length > 0 ? ingredientScience : undefined,
     images,
+    images_stored,
     source: 'open_beauty_facts',
     last_modified_server: lastModifiedServer,
     last_synced_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -302,6 +338,8 @@ async function transformProduct(product: any): Promise<any> {
     sourceId: product.sourceId || product.id,
     // Store periods after opening if available
     ...(product.periodsAfterOpening && { periodsAfterOpening: product.periodsAfterOpening }),
+    // Add eco score data
+    ...ecoScoreData,
   };
 
   return productData;

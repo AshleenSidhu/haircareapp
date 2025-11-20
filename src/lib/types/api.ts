@@ -16,6 +16,12 @@ export interface ApiProduct {
     front?: string;
     ingredients?: string;
   };
+  images_stored?: {
+    storage_url?: string | null;
+    stored_at?: number | string | null;
+    image_type?: string;
+    original_url?: string;
+  };
   source?: 'open_beauty_facts' | 'openbeautyfacts' | 'beautyfeeds' | 'manual';
   last_modified_server?: number;
   last_synced_at?: number | string;
@@ -24,6 +30,13 @@ export interface ApiProduct {
     score: number;
     explainers: string[];
   };
+  // Eco score fields
+  eco_score?: number;
+  eco_grade?: 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F';
+  eco_reasoning?: string[];
+  eco_positive_factors?: string[];
+  eco_negative_factors?: string[];
+  eco_recommendations?: string[];
   // Legacy fields for compatibility
   description?: string;
   price?: number;

@@ -53,6 +53,13 @@ export interface SustainabilityInfo {
   locallyOwned: boolean;
   smallBrand: boolean;
   explanation?: string;
+  // Eco score (0-100) with detailed reasoning
+  eco_score?: number;
+  eco_grade?: 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F';
+  eco_reasoning?: string[];
+  eco_positive_factors?: string[];
+  eco_negative_factors?: string[];
+  eco_recommendations?: string[];
 }
 
 export interface SafetyInfo {

@@ -86,3 +86,5 @@ const functions = getFunctions(app, 'northamerica-northeast1');
 // Export callable functions with explicit region
 export const getProductDetails = httpsCallable(functions, 'getProductDetails');
 export const syncProducts = httpsCallable(functions, 'syncProducts');
+export const discoverProductsWithGoogleCSE = httpsCallable(functions, 'discoverProductsWithGoogleCSE');
+export const downloadAndStoreImage = httpsCallable(functions, 'downloadAndStoreImage');

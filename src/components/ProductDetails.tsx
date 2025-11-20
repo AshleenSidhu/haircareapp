@@ -24,6 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { likeProduct, unlikeProduct, isProductLiked } from '../lib/utils/products';
 import { useToast } from '../hooks/use-toast';
 import { getProductDetails } from '../lib/firebase';
+import { ProductImage } from './ProductImage';
 
 interface ProductDetailsProps {
   product: Product | null;
@@ -163,19 +164,17 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
           )}
 
           {/* Main Image */}
-          {displayProduct.imageUrl && (
-            <div className="w-full h-64 rounded-lg overflow-hidden bg-muted">
-              <img
-                src={displayProduct.imageUrl}
-                alt={displayProduct.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to a better placeholder if image fails
-                  (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=400&fit=crop&q=80`;
-                }}
-              />
-            </div>
-          )}
+          <div className="w-full h-64 rounded-lg overflow-hidden bg-muted">
+            <ProductImage
+              product={{
+                images: {
+                  front: displayProduct.imageUrl,
+                },
+              }}
+              alt={displayProduct.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
 
           {/* Tags */}
           {displayProduct.tags.length > 0 && (

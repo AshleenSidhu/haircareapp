@@ -9,6 +9,7 @@
 
 import { onRequest } from 'firebase-functions/v2/https';
 import * as functions from 'firebase-functions';
+import fetch from 'node-fetch';
 
 /**
  * GET /api/placeholders/haircare

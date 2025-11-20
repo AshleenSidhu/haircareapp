@@ -1,10 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Products collection - allow read for all (public products), write only for authenticated users
+    // Products collection - authenticated users can read, only backend functions can write
     match /products/{productId} {
-      allow read: if true; // Anyone can read products (public catalog)
-      allow write: if request.auth != null; // Only authenticated users can write products
+      allow read: if request.auth != null; // Authenticated users can read
+      allow write: if false; // Only backend functions can write (using Admin SDK)
+    }
+    
+    // Ingredient science collection - authenticated users can read, only backend functions can write
+    match /ingredient_science/{ingredientId} {
+      allow read: if request.auth != null; // Authenticated users can read
+      allow write: if false; // Only backend functions can write (using Admin SDK)
     }
     
     // Quiz results - users can only read/write their own
@@ -26,6 +32,12 @@ service cloud.firestore {
     // User profile - users can only read/write their own
     match /users/{userId}/profile {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Staged products queue - authenticated users can read, only backend functions can write
+    match /staged_products/{stagedId} {
+      allow read: if request.auth != null; // Authenticated users can read
+      allow write: if false; // Only backend functions can write (using Admin SDK)
     }
     
     // Default: deny all other access

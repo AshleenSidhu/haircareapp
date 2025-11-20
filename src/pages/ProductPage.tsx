@@ -14,6 +14,8 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { IngredientPopover } from '../components/IngredientPopover';
 import { CompatibilityBadge } from '../components/CompatibilityBadge';
+import { EcoScoreBadge } from '../components/EcoScoreBadge';
+import { ProductImage } from '../components/ProductImage';
 import { useFetchWithCache } from '../hooks/useFetchWithCache';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
@@ -101,6 +103,19 @@ export function ProductPage() {
         const result = calculateCompatibility(productData.product_profile, userProfile);
         setCompatibilityScore(result.score);
         setCompatibilityExplainers(result.explainers);
+      }
+
+      // Debug: Log eco score data
+      if (productData.eco_score !== undefined) {
+        console.log('[ProductPage] Eco score data:', {
+          score: productData.eco_score,
+          grade: productData.eco_grade,
+          hasReasoning: !!productData.eco_reasoning,
+          hasPositive: !!productData.eco_positive_factors,
+          hasNegative: !!productData.eco_negative_factors,
+        });
+      } else {
+        console.log('[ProductPage] No eco score data in product:', productData);
       }
     } else if (productError) {
       setError('Failed to load product. Please try again later.');
@@ -221,8 +236,8 @@ export function ProductPage() {
                   </div>
                 ) : (
                   <>
-                    <img
-                      src={getCurrentImage() || getPlaceholderImage()}
+                    <ProductImage
+                      product={product}
                       alt={product.name}
                       className="w-full h-full object-cover"
                       onError={handleImageError}
@@ -283,6 +298,16 @@ export function ProductPage() {
                 userProfile={userProfile || undefined}
               />
             )}
+
+            {/* Eco Score */}
+            <EcoScoreBadge
+              ecoScore={product.eco_score}
+              ecoGrade={product.eco_grade}
+              ecoReasoning={product.eco_reasoning}
+              ecoPositiveFactors={product.eco_positive_factors}
+              ecoNegativeFactors={product.eco_negative_factors}
+              ecoRecommendations={product.eco_recommendations}
+            />
 
             {/* Ingredients Section */}
             {product.ingredients_inci && (

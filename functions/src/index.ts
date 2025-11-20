@@ -20,6 +20,10 @@ export { syncProducts } from './productSync';
 export { apiProducts, apiProductById } from './api/products';
 export { apiIngredient } from './api/ingredients';
 export { getHaircarePlaceholder } from './api/placeholders';
+export { downloadAndStoreImage } from './api/imageStorage';
+
+// Export discovery functions
+export { discoverProductsWithGoogleCSE } from './discovery/googleCSE';
 
 // Initialize Firebase Admin if not already initialized
 try {
