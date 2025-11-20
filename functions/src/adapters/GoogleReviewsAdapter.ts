@@ -1,6 +1,8 @@
 /**
- * Google Reviews Web Scraper Adapter
- * Fetches product reviews from Google using web scraping with Cheerio
+ * Google Reviews Adapter
+ * Fetches product reviews from Google using:
+ * 1. Google Custom Search API (recommended - requires API key)
+ * 2. Web scraping fallback (no API key, but less reliable)
  * Uses AI (Claude/OpenAI) to analyze sentiment per product
  */
 
@@ -8,6 +10,11 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { ReviewData } from '../types/products';
 import { cache } from '../utils/cache';
+
+// Google Custom Search API configuration
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
+const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID || '';
+const GOOGLE_CUSTOM_SEARCH_URL = 'https://www.googleapis.com/customsearch/v1';
 
 export class GoogleReviewsAdapter {
 
@@ -48,10 +55,180 @@ export class GoogleReviewsAdapter {
   }
 
   /**
-   * Scrape Google Reviews using Cheerio
+   * Get reviews using Google Custom Search API (if configured) or web scraping
    * Searches for the product and extracts reviews from Google search results
    */
   private async scrapeGoogleReviews(brand: string, productName: string): Promise<ReviewData | null> {
+    try {
+      // Try Google Custom Search API first if keys are configured
+      if (GOOGLE_API_KEY && GOOGLE_SEARCH_ENGINE_ID) {
+        console.log('[GoogleReviews] Using Google Custom Search API');
+        return await this.searchReviewsViaAPI(brand, productName);
+      }
+
+      // Fallback to web scraping
+      console.log('[GoogleReviews] API keys not configured, using web scraping fallback');
+      return await this.searchReviewsViaScraping(brand, productName);
+    } catch (error: any) {
+      console.error('[GoogleReviews] Error fetching reviews:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Search for reviews using Google Custom Search API
+   * More reliable and doesn't violate ToS
+   */
+  private async searchReviewsViaAPI(brand: string, productName: string): Promise<ReviewData | null> {
+    try {
+      const searchQuery = `${brand} ${productName} reviews`;
+      console.log(`[GoogleReviews] API search: ${searchQuery}`);
+
+      const response = await axios.get(GOOGLE_CUSTOM_SEARCH_URL, {
+        params: {
+          key: GOOGLE_API_KEY,
+          cx: GOOGLE_SEARCH_ENGINE_ID,
+          q: searchQuery,
+          num: 10, // Get top 10 results
+        },
+        timeout: 10000,
+      });
+
+      if (!response.data?.items || response.data.items.length === 0) {
+        console.log('[GoogleReviews] No results from API');
+        return null;
+      }
+
+      // Extract review links from search results
+      const reviewLinks = response.data.items
+        .map((item: any) => item.link)
+        .filter((link: string) => 
+          link.includes('review') || 
+          link.includes('rating') || 
+          link.includes('amazon') ||
+          link.includes('walmart') ||
+          link.includes('target')
+        )
+        .slice(0, 5); // Limit to 5 review sites
+
+      // Scrape reviews from the found links
+      const allReviews: Array<{
+        author: string;
+        rating: number;
+        text: string;
+        date: string;
+      }> = [];
+
+      for (const link of reviewLinks) {
+        try {
+          const reviews = await this.scrapeReviewsFromUrl(link);
+          allReviews.push(...reviews);
+        } catch (error) {
+          console.warn(`[GoogleReviews] Failed to scrape ${link}:`, error);
+        }
+      }
+
+      return this.processReviews(allReviews);
+    } catch (error: any) {
+      console.error('[GoogleReviews] API search error:', error.message);
+      // Fallback to scraping
+      return await this.searchReviewsViaScraping(brand, productName);
+    }
+  }
+
+  /**
+   * Scrape reviews from a specific URL (Amazon, Walmart, Target, etc.)
+   */
+  private async scrapeReviewsFromUrl(url: string): Promise<Array<{
+    author: string;
+    rating: number;
+    text: string;
+    date: string;
+  }>> {
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+            '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
+        timeout: 10000,
+      });
+
+      const $ = cheerio.load(response.data);
+      const reviews: Array<{
+        author: string;
+        rating: number;
+        text: string;
+        date: string;
+      }> = [];
+
+      // Generic review extraction (works for Amazon, Walmart, etc.)
+      $('[data-hook="review"], .review, .review-item, [class*="review"]').each((index, element) => {
+        if (reviews.length >= 5) return; // Limit per site
+
+        const $el = $(element);
+        const text = $el.find('.review-text, .review-body, [class*="text"]').text().trim();
+        const ratingText = $el.find('[class*="rating"], [class*="star"]').attr('aria-label') || 
+                          $el.find('[class*="rating"], [class*="star"]').text() || '';
+        const ratingMatch = ratingText.match(/(\d+(?:\.\d+)?)/);
+        const rating = ratingMatch ? parseFloat(ratingMatch[1]) : 0;
+        const author = $el.find('[class*="author"], [class*="name"]').text().trim() || 'Anonymous';
+        const date = $el.find('[class*="date"]').text().trim() || new Date().toISOString();
+
+        if (text.length > 10 && rating > 0) {
+          reviews.push({ author, rating, text, date });
+        }
+      });
+
+      return reviews;
+    } catch (error: any) {
+      console.warn(`[GoogleReviews] Error scraping ${url}:`, error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Process and format reviews into ReviewData format
+   */
+  private processReviews(reviews: Array<{
+    author: string;
+    rating: number;
+    text: string;
+    date: string;
+  }>): ReviewData | null {
+    if (reviews.length === 0) {
+      return null;
+    }
+
+    // Calculate average rating and total reviews
+    const ratings = reviews.map((r) => r.rating);
+    const averageRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+    const totalReviews = reviews.length;
+
+    // Calculate basic sentiment score
+    const sentimentScore = this.calculateSentimentScore(reviews);
+
+    // Get top 3 helpful reviews (highest rated with substantial text)
+    const topReviews = reviews
+      .filter((r) => r.text.length > 20)
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, 3);
+
+    return {
+      averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+      totalReviews,
+      sentimentScore,
+      reviews: reviews.slice(0, 10), // Return top 10 reviews
+      topReviews, // Top 3 helpful reviews
+    };
+  }
+
+  /**
+   * Search for reviews using web scraping (fallback)
+   * Less reliable and may violate Google's ToS
+   */
+  private async searchReviewsViaScraping(brand: string, productName: string): Promise<ReviewData | null> {
     try {
       // Build search query
       const searchQuery = encodeURIComponent(`${brand} ${productName} reviews`);

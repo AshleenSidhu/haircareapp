@@ -3,6 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -78,3 +79,10 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export { analytics };
+
+// Initialize Firebase Functions
+const functions = getFunctions(app, 'northamerica-northeast1');
+
+// Export callable functions with explicit region
+export const getProductDetails = httpsCallable(functions, 'getProductDetails');
+export const syncProducts = httpsCallable(functions, 'syncProducts');

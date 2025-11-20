@@ -16,20 +16,15 @@ import { ProductDeduplicator } from './utils/deduplicator';
 // Export syncProducts for use in Cloud Functions
 export { syncProducts } from './productSync';
 
-// Export Products Page functions
-export {
-  getProductDetails,
-  getGoogleReviews,
-  filterProducts,
-  likeProduct,
-  unlikeProduct,
-  getLikedProducts,
-} from './productsPage';
+// Export API endpoints
+export { apiProducts, apiProductById } from './api/products';
+export { apiIngredient } from './api/ingredients';
+export { getHaircarePlaceholder } from './api/placeholders';
 
 // Initialize Firebase Admin if not already initialized
 try {
   if (!admin.apps.length) {
-    admin.initializeApp();
+admin.initializeApp();
   }
 } catch (error: any) {
   // App already initialized, ignore error

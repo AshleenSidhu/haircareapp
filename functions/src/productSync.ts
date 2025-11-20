@@ -1,18 +1,13 @@
 /**
- * Product Sync Cloud Function
- * Fetches products from BeautyFeeds.io and Open Beauty Facts,
- * enriches them with ingredient safety, reviews, and AI explanations,
- * then stores in Firestore
+ * Clean Product Sync - Open Beauty Facts + CosIng
+ * Simple product sync using only OBF API and CosIng ingredient science
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { OpenBeautyFactsAdapter } from './adapters/OpenBeautyFactsAdapter';
-import { BeautyFeedsAdapter } from './adapters/BeautyFeedsAdapter';
-import { IngredientAdapter } from './adapters/IngredientAdapter';
-import { GoogleReviewsAdapter } from './adapters/GoogleReviewsAdapter';
-import { AIAggregator } from './ai/AIAggregator';
-import { Product } from './types';
+import { CosIngAdapter } from './adapters/CosIngAdapter';
+import { parseIngredientsText, extractINCIFromIngredients } from './utils/ingredientNormalizer';
 
 // Initialize Firebase Admin if not already initialized
 try {
@@ -20,227 +15,296 @@ try {
     admin.initializeApp();
   }
 } catch (error: any) {
-  // App already initialized, ignore error
   if (error.code !== 'app/duplicate-app') {
     throw error;
   }
 }
 
 const db = admin.firestore();
+const obfAdapter = new OpenBeautyFactsAdapter();
+const cosingAdapter = new CosIngAdapter();
 
 /**
- * Cloud Function: Sync Products from APIs
- * Fetches products from BeautyFeeds.io and Open Beauty Facts,
- * enriches with ingredient safety, reviews, sustainability info,
- * and stores in Firestore
+ * Sync products from Open Beauty Facts
+ * Fetches products, normalizes ingredients, maps to CosIng science, stores in Firestore
  */
 export const syncProducts = onCall(
-  { 
+  {
     enforceAppCheck: false,
-    region: 'northamerica-northeast1'
+    region: 'northamerica-northeast1',
+    timeoutSeconds: 540, // 9 minutes max
+    memory: '512MiB',
   },
   async (request) => {
+    console.log('[syncProducts] Function called');
+    console.log('[syncProducts] Request data:', request.data);
+    console.log('[syncProducts] Auth:', request.auth ? `User ${request.auth.uid}` : 'No auth');
+    
+    // Verify authentication
     if (!request.auth) {
-      throw new HttpsError(
-        'unauthenticated',
-        'User must be authenticated'
-      );
+      console.error('[syncProducts] Unauthenticated request');
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
     try {
-      const { tags = ['shampoo', 'conditioner', 'hair-care'], limit = 50 } = request.data;
+      console.log('[syncProducts] Starting try block');
+      const tags = request.data?.tags || ['shampoo', 'conditioner', 'hair-care'];
+      const limit = Math.min(request.data?.limit || 50, 100); // Max 100 products
+
+      console.log(`[syncProducts] Starting sync with tags: ${tags.join(', ')}, limit: ${limit}`);
+
+      // Fetch products from Open Beauty Facts
+      // NOTE: Open Beauty Facts has rate limits (~10 req/sec)
+      // For mass syncs (>1000 products), prefer bulk dumps:
+      // https://world.openbeautyfacts.org/data/openbeautyfacts-products.jsonl.gz
+      console.log(`[syncProducts] Calling OBF adapter with tags: ${tags.join(', ')}, limit: ${limit}`);
+      let products;
+      try {
+        products = await obfAdapter.searchProducts(tags, limit);
+        console.log(`[syncProducts] OBF adapter returned ${products.length} products`);
+      } catch (obfError: any) {
+        console.error('[syncProducts] Error calling OBF adapter:', obfError.message);
+        console.error('[syncProducts] OBF error stack:', obfError.stack);
+        // Return error response instead of throwing
+        return {
+          success: false,
+          productsSynced: 0,
+          totalFound: 0,
+          errors: 1,
+          errorMessages: [`Failed to fetch products from Open Beauty Facts: ${obfError.message}`],
+        };
+      }
       
-      console.log(`[syncProducts] Starting sync with tags: ${tags.join(', ')}`);
+      if (products.length > 0) {
+        console.log(`[syncProducts] First product sample:`, {
+          id: products[0].id,
+          name: products[0].name,
+          brand: products[0].brand,
+          hasIngredients: !!(products[0].ingredients && products[0].ingredients.length > 0),
+          ingredientsCount: products[0].ingredients?.length || 0,
+          source: products[0].source,
+        });
+      }
 
-      // Initialize adapters
-      const obfAdapter = new OpenBeautyFactsAdapter();
-      const bfAdapter = new BeautyFeedsAdapter();
-      const ingredientAdapter = new IngredientAdapter();
-      const reviewsAdapter = new GoogleReviewsAdapter();
-      const aiAggregator = new AIAggregator();
+      if (products.length === 0) {
+        console.warn('[syncProducts] ⚠️ No products returned from Open Beauty Facts API');
+        console.warn('[syncProducts] This could mean:');
+        console.warn('  1. API returned no results for the given tags');
+        console.warn('  2. API rate limit exceeded');
+        console.warn('  3. Network/API error');
+        return {
+          success: true,
+          productsSynced: 0,
+          totalFound: 0,
+          message: 'No products found from Open Beauty Facts API',
+        };
+      }
 
-      // Step 1: Fetch products from both sources
-      console.log('[syncProducts] Fetching products from APIs');
-      const [obfProducts, bfProducts] = await Promise.all([
-        obfAdapter.searchProducts(tags, limit),
-        bfAdapter.searchProducts(tags, limit),
-      ]);
+      // Process and store products
+      let synced = 0;
+      let errors = 0;
+      const errorMessages: string[] = [];
+      const BATCH_SIZE = 500;
+      let batchCount = 0;
+      let batch = db.batch();
 
-      console.log(
-        `[syncProducts] Found ${obfProducts.length} from OpenBeautyFacts, ` +
-        `${bfProducts.length} from BeautyFeeds`
-      );
-
-      // Step 2: Combine and deduplicate
-      const allProducts = [...obfProducts, ...bfProducts];
-      const uniqueProducts = allProducts.filter((product, index, self) =>
-        index === self.findIndex((p) =>
-          p.name.toLowerCase() === product.name.toLowerCase() &&
-          p.brand.toLowerCase() === product.brand.toLowerCase()
-        )
-      );
-
-      console.log(`[syncProducts] ${uniqueProducts.length} unique products after deduplication`);
-
-      // Step 3: Enrich each product and store in Firestore
-      const batch = db.batch();
-      let enrichedCount = 0;
-
-      for (const product of uniqueProducts.slice(0, limit)) {
+      for (let i = 0; i < products.length; i++) {
+        const product = products[i];
         try {
-          const enrichedProduct = await enrichSingleProduct(
-            product,
-            ingredientAdapter,
-            reviewsAdapter,
-            aiAggregator
-          );
+          console.log(`[syncProducts] Processing product ${i + 1}/${products.length}: ${product.name || product.id}`);
+          
+          // Validate product has required fields
+          if (!product || !product.id) {
+            console.warn(`[syncProducts] Skipping invalid product at index ${i}: missing id`);
+            errors++;
+            continue;
+          }
+
+          // Transform to new schema with normalized ingredients
+          let productData;
+          try {
+            productData = await transformProduct(product);
+          } catch (transformError: any) {
+            console.error(`[syncProducts] Transform error for product ${product.id}:`, transformError.message);
+            errors++;
+            errorMessages.push(`Product ${product.id}: ${transformError.message}`);
+            continue;
+          }
+
+          if (!productData || !productData.product_id) {
+            console.warn(`[syncProducts] Skipping product ${product.id}: transform returned invalid data`);
+            errors++;
+            continue;
+          }
+          
+          console.log(`[syncProducts] Transformed product:`, {
+            product_id: productData.product_id,
+            name: productData.name,
+            normalized_ingredients_count: productData.normalized_ingredients?.length || 0,
+            ingredient_science_count: productData.ingredient_science?.length || 0,
+          });
 
           // Store in Firestore
-          const productRef = db.collection('products').doc(enrichedProduct.id);
-          batch.set(productRef, {
-            ...enrichedProduct,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true });
+          const productId = productData.product_id || product.id;
+          const docRef = db.collection('products').doc(productId);
+          batch.set(docRef, productData, { merge: true });
 
-          enrichedCount++;
+          batchCount++;
+          synced++;
+
+          // Commit batch every BATCH_SIZE items and create new batch
+          if (batchCount >= BATCH_SIZE) {
+            try {
+              await batch.commit();
+              console.log(`[syncProducts] Synced ${synced}/${products.length} products...`);
+              // Create new batch for next set
+              batch = db.batch();
+              batchCount = 0;
+            } catch (commitError: any) {
+              console.error(`[syncProducts] Error committing batch:`, commitError.message);
+              errors += batchCount;
+              batchCount = 0;
+              batch = db.batch(); // Create new batch even on error
+            }
+          }
         } catch (error: any) {
-          console.error(`[syncProducts] Error enriching product ${product.id}:`, error.message);
-          // Continue with other products
+          console.error(`[syncProducts] Error processing product ${product?.id || 'unknown'}:`, error.message);
+          console.error(`[syncProducts] Error stack:`, error.stack);
+          errors++;
+          errorMessages.push(`Product ${product?.id || 'unknown'}: ${error.message}`);
         }
       }
 
-      // Commit batch
-      await batch.commit();
+      // Commit remaining items
+      if (batchCount > 0) {
+        try {
+          await batch.commit();
+          console.log(`[syncProducts] Committed final batch of ${batchCount} products`);
+        } catch (error: any) {
+          console.error(`[syncProducts] Error committing final batch:`, error.message);
+          errors += batchCount;
+        }
+      }
 
-      console.log(`[syncProducts] Successfully synced ${enrichedCount} products`);
+      console.log(`[syncProducts] Sync complete! Synced: ${synced}, Errors: ${errors}`);
 
-      return {
-        success: true,
-        productsSynced: enrichedCount,
-        totalFound: uniqueProducts.length,
+      // Always return a valid response object
+      const response = {
+        success: synced > 0 || errors === 0, // Success if we synced something or had no errors
+        productsSynced: synced,
+        totalFound: products.length,
+        errors: errors > 0 ? errors : undefined,
+        errorMessages: errorMessages.length > 0 ? errorMessages.slice(0, 10) : undefined, // Limit to first 10 errors
       };
+
+      console.log(`[syncProducts] Returning response:`, response);
+      return response;
     } catch (error: any) {
-      console.error('[syncProducts] Error:', error);
-      throw new HttpsError(
-        'internal',
-        `Failed to sync products: ${error.message}`
-      );
+      console.error('[syncProducts] Fatal error:', error);
+      console.error('[syncProducts] Error stack:', error.stack);
+      
+      // Return error response instead of throwing to avoid "missing data field" error
+      return {
+        success: false,
+        productsSynced: 0,
+        totalFound: 0,
+        errors: 1,
+        errorMessages: [`Fatal error: ${error.message}`],
+      };
     }
   }
 );
 
 /**
- * Enrich a single product with all data
+ * Transform product to new schema with normalized ingredients and CosIng mapping
  */
-async function enrichSingleProduct(
-  product: Product,
-  ingredientAdapter: IngredientAdapter,
-  reviewsAdapter: GoogleReviewsAdapter,
-  aiAggregator: AIAggregator
-): Promise<any> {
-  // Step 1: Analyze ingredient safety
-  const ingredients = product.ingredients || [];
-  // Convert ingredients to string array if needed
-  const ingredientStrings = ingredients.map((ing: any) =>
-    typeof ing === 'string' ? ing : ing.name || ''
-  ).filter((s: string) => s.length > 0);
-  const safetyData = await ingredientAdapter.analyzeIngredientSafety(ingredientStrings);
+async function transformProduct(product: any): Promise<any> {
+  // Extract ingredients - handle both pre-processed and raw formats
+  let ingredients_inci = product.ingredients_inci || '';
+  let ingredients_raw: Array<{ text: string; id?: string }> = product.ingredients_raw || [];
+  let normalized_ingredients: string[] = [];
 
-  // Step 2: Fetch reviews
-  let reviews;
-  try {
-    reviews = await reviewsAdapter.getReviews(product.brand, product.name);
-  } catch (error) {
-    console.warn(`[enrichSingleProduct] Failed to fetch reviews for ${product.name}:`, error);
-    reviews = {
-      averageRating: 0,
-      totalReviews: 0,
-      sentimentScore: 0,
-      reviews: [],
-    };
+  // If ingredients_inci not provided, extract from ingredients array
+  if (!ingredients_inci && product.ingredients && product.ingredients.length > 0) {
+    // If ingredients is an array of strings
+    if (typeof product.ingredients[0] === 'string') {
+      ingredients_inci = product.ingredients.join(', ');
+      ingredients_raw = product.ingredients.map((ing: string) => ({ text: ing }));
+      normalized_ingredients = parseIngredientsText(ingredients_inci);
+    } else {
+      // If ingredients is an array of objects
+      ingredients_raw = product.ingredients as any;
+      ingredients_inci = ingredients_raw
+        .map((ing: any) => ing.text || ing.id || ing.name || '')
+        .filter((text: string) => text.length > 0)
+        .join(', ');
+      normalized_ingredients = extractINCIFromIngredients(ingredients_raw);
+    }
+  } else if (ingredients_inci) {
+    // If ingredients_inci is provided, normalize it
+    normalized_ingredients = parseIngredientsText(ingredients_inci);
+    // If ingredients_raw not provided, create from ingredients_inci
+    if (ingredients_raw.length === 0) {
+      ingredients_raw = normalized_ingredients.map(ing => ({ text: ing }));
+    }
   }
 
-  // Step 3: Extract sustainability info from tags and Open Beauty Facts data
-  const sustainability = extractSustainabilityInfo(product);
+  // Get CosIng science data for ingredients (optional enrichment)
+  const ingredientScience: any[] = [];
+  if (normalized_ingredients.length > 0) {
+    const scienceMap = await cosingAdapter.getBatchIngredientScience(normalized_ingredients);
+    for (const ing of normalized_ingredients) {
+      const science = scienceMap.get(ing);
+      if (science) {
+        ingredientScience.push({
+          inci_name: ing,
+          functions: science.functions || [],
+          restrictions: science.restrictions,
+          safety_notes: science.safety_notes,
+        });
+      }
+    }
+  }
 
-  // Step 4: Enrich ingredients with AI explanations
-  const enrichedIngredients = await Promise.all(
-    ingredientStrings.map(async (ingredientStr: string) => {
-      const aiExplanation = await aiAggregator.explainIngredient(
-        ingredientStr,
-        product.name,
-        product.brand
-      );
+  // Extract categories from tags or categories field
+  const categories = product.categories || product.tags || [];
 
-      // Find safety info for this ingredient
-      const ingredientSafety = safetyData.flaggedIngredients.find(
-        (flagged) => flagged.name.toLowerCase() === ingredientStr.toLowerCase()
-      );
-
-      return {
-        name: ingredientStr,
-        aiExplanation: aiExplanation || 'This ingredient is commonly used in hair care products.',
-        safetyLevel: ingredientSafety
-          ? ingredientSafety.severity === 'high'
-            ? 'avoid'
-            : ingredientSafety.severity === 'medium'
-            ? 'caution'
-            : 'safe'
-          : 'safe',
-        allergenFlag: safetyData.allergenMatches?.includes(ingredientStr) || false,
-      };
-    })
-  );
-
-  // Step 5: Build safety info
-  const safety = {
-    overallScore: safetyData.score,
-    allergenWarnings: safetyData.flaggedIngredients.map((flagged) => ({
-      ingredient: flagged.name,
-      severity: flagged.severity,
-      description: flagged.concern,
-    })),
-    flaggedIngredients: safetyData.flaggedIngredients,
+  // Extract images - handle both old (imageUrl) and new (images object) formats
+  const images = {
+    front: product.images?.front || product.imageUrl || undefined,
+    ingredients: product.images?.ingredients || undefined,
   };
-
-  // Return enriched product
-  return {
-    ...product,
-    title: product.name, // Use 'title' for consistency with frontend
-    ingredients: enrichedIngredients,
-    safety,
-    reviews,
-    sustainability,
-    tags: product.tags || [],
-  };
-}
-
-/**
- * Extract sustainability information from product tags and data
- */
-function extractSustainabilityInfo(product: Product): any {
-  const tags = (product.tags || []).map(tag => tag.toLowerCase());
   
-  return {
-    ecoFriendly: tags.some(tag => 
-      tag.includes('eco') || tag.includes('sustainable') || tag.includes('green')
-    ),
-    sustainable: tags.some(tag => 
-      tag.includes('sustainable') || tag.includes('eco-friendly')
-    ),
-    crueltyFree: tags.some(tag => 
-      tag.includes('cruelty-free') || tag.includes('not tested on animals')
-    ),
-    locallyOwned: false, // Would need additional data source
-    smallBrand: false, // Would need additional data source
-    explanation: tags.includes('vegan') 
-      ? 'This product is vegan and cruelty-free, made with sustainable practices.'
-      : tags.includes('cruelty-free')
-      ? 'This product is cruelty-free and not tested on animals.'
-      : tags.includes('eco')
-      ? 'This product uses eco-friendly packaging and sustainable ingredients.'
-      : undefined,
+  // Also preserve last_modified_server if available
+  const lastModifiedServer = product.last_modified_server || product.last_modified_t;
+
+  // Build product data in new schema
+  const productData: any = {
+    product_id: product.id || product.upc || product.barcode || `obf_${Date.now()}`,
+    barcode: product.barcode || product.upc || product.id,
+    name: product.name,
+    brand: product.brand,
+    categories,
+    ingredients_inci: product.ingredients_inci || ingredients_inci,
+    ingredients_raw: product.ingredients_raw || ingredients_raw,
+    normalized_ingredients,
+    ingredient_science: ingredientScience.length > 0 ? ingredientScience : undefined,
+    images,
+    source: 'open_beauty_facts',
+    last_modified_server: lastModifiedServer,
+    last_synced_at: admin.firestore.FieldValue.serverTimestamp(),
+    // Preserve existing fields
+    description: product.description,
+    price: product.price,
+    currency: product.currency || 'USD',
+    tags: product.tags || categories,
+    url: product.url,
+    sourceId: product.sourceId || product.id,
+    // Store periods after opening if available
+    ...(product.periodsAfterOpening && { periodsAfterOpening: product.periodsAfterOpening }),
   };
+
+  return productData;
 }
+
 

@@ -97,6 +97,7 @@ export async function fetchProducts(
   limitCount: number = 200
 ): Promise<Product[]> {
   try {
+    console.log('[fetchProducts] Starting fetch...');
     const productsRef = collection(db, 'products');
     
     // Try to query with orderBy, but handle case where index might not exist or permission issues
@@ -104,9 +105,10 @@ export async function fetchProducts(
     try {
       // First try with orderBy - this might fail if index doesn't exist
       q = query(productsRef, orderBy('createdAt', 'desc'), firestoreLimit(limitCount));
+      console.log('[fetchProducts] Attempting query with orderBy(createdAt)...');
     } catch (error: any) {
       // If orderBy fails (no index or permission), just get products without ordering
-      console.warn('Could not order by createdAt, fetching without order:', error);
+      console.warn('[fetchProducts] Could not order by createdAt, fetching without order:', error);
       q = query(productsRef, firestoreLimit(limitCount));
     }
 
@@ -115,16 +117,23 @@ export async function fetchProducts(
     let querySnapshot;
     try {
       querySnapshot = await getDocs(q);
+      console.log(`[fetchProducts] Query successful! Found ${querySnapshot.docs.length} documents in Firestore`);
     } catch (error: any) {
+      console.error('[fetchProducts] Query failed:', error);
+      console.error('[fetchProducts] Error code:', error.code);
+      console.error('[fetchProducts] Error message:', error.message);
+      
       // If query fails due to permissions or index, try a simpler query
       if (error.code === 'permission-denied' || error.code === 'failed-precondition') {
-        console.warn('Query failed, trying simple fetch without orderBy:', error);
+        console.warn('[fetchProducts] Query failed, trying simple fetch without orderBy:', error);
         try {
           // Try without orderBy and limit
           const simpleQuery = query(productsRef);
           querySnapshot = await getDocs(simpleQuery);
+          console.log(`[fetchProducts] Simple query successful! Found ${querySnapshot.docs.length} documents`);
         } catch (simpleError: any) {
-          console.error('Even simple query failed:', simpleError);
+          console.error('[fetchProducts] Even simple query failed:', simpleError);
+          console.error('[fetchProducts] Simple error code:', simpleError.code);
           // If still fails, return empty array
           return [];
         }
@@ -133,18 +142,39 @@ export async function fetchProducts(
       }
     }
     
-    const products = querySnapshot.docs.map(doc => {
+    if (!querySnapshot || querySnapshot.docs.length === 0) {
+      console.warn('[fetchProducts] No documents found in Firestore products collection');
+      console.warn('[fetchProducts] This means:');
+      console.warn('  1. Products collection is empty');
+      console.warn('  2. Need to sync products using syncProducts function');
+      return [];
+    }
+    
+    const products = querySnapshot.docs.map((doc, index) => {
       const data = doc.data();
+      
+      // Handle both old and new schema
+      // New schema: name, images.front
+      // Old schema: title, imageUrl
+      const productName = data.title || data.name || 'Unknown Product';
+      const productBrand = data.brand || 'Unknown Brand';
+      
+      // Handle image URL - new schema uses images.front, old uses imageUrl
+      let imageUrl = data.imageUrl || data.image;
+      if (!imageUrl && data.images) {
+        imageUrl = data.images.front || data.images.ingredients;
+      }
+      
       const product = {
         id: doc.id,
-        title: data.title || data.name || 'Unknown Product',
-        brand: data.brand || 'Unknown Brand',
-        imageUrl: data.imageUrl || data.image || undefined,
-        tags: data.tags || [],
+        title: productName,
+        brand: productBrand,
+        imageUrl: imageUrl,
+        tags: data.tags || data.categories || [],
         description: data.description,
         price: data.price,
         currency: data.currency || 'USD',
-        upc: data.upc,
+        upc: data.upc || data.barcode,
         ingredients: data.ingredients || [],
         sustainability: data.sustainability || {
           ecoFriendly: false,
@@ -166,14 +196,14 @@ export async function fetchProducts(
         },
         aiRecommendationExplanation: data.aiRecommendationExplanation,
         source: data.source || 'manual',
-        sourceId: data.sourceId,
+        sourceId: data.sourceId || data.product_id,
         url: data.url,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       } as Product;
       
       // Debug: Log first product to check imageUrl
-      if (products.length === 0) {
+      if (index === 0) {
         console.log('[fetchProducts] First product:', product);
         console.log('[fetchProducts] First product imageUrl:', product.imageUrl);
       }
@@ -181,12 +211,52 @@ export async function fetchProducts(
       return product;
     });
 
-    // Apply client-side filtering if filters provided
-    if (filters) {
-      return filterProducts(products, filters);
+    // Filter out mock products - only show real products from APIs
+    // Mock products typically have "Mock" in name, or come from 'manual' source without proper brand
+    const realProducts = products.filter(product => {
+      const productName = product.title || (product as any).name || '';
+      // Exclude products with "Mock" in name
+      if (productName.toLowerCase().includes('mock')) {
+        return false;
+      }
+      // Exclude products from 'manual' source that look like mock data
+      // BUT allow products from 'open_beauty_facts' or 'openbeautyfacts' even if brand is Unknown
+      if (product.source === 'manual' && (!product.brand || product.brand === 'Unknown' || product.brand === 'Mock Brand')) {
+        return false;
+      }
+      // For Open Beauty Facts products, be more lenient with brand requirements
+      if (product.source === 'open_beauty_facts' || product.source === 'openbeautyfacts') {
+        // Only require that product has a name
+        return productName && productName.trim().length > 0;
+      }
+      // For other sources, require valid brand and name
+      return product.brand && product.brand !== 'Unknown' && productName && productName.trim().length > 0;
+    });
+
+    console.log(`[fetchProducts] Total products from Firestore: ${products.length}`);
+    console.log(`[fetchProducts] Filtered out ${products.length - realProducts.length} mock/invalid products`);
+    console.log(`[fetchProducts] Returning ${realProducts.length} real products`);
+    
+    if (products.length > 0 && realProducts.length === 0) {
+      console.warn('[fetchProducts] ⚠️ All products were filtered out!');
+      console.warn('[fetchProducts] Sample of filtered products:');
+      products.slice(0, 3).forEach((p, i) => {
+        console.warn(`  Product ${i + 1}:`, {
+          name: p.title,
+          brand: p.brand,
+          source: p.source,
+          hasName: !!p.title,
+          hasBrand: !!p.brand,
+        });
+      });
     }
 
-    return products;
+    // Apply client-side filtering if filters provided
+    if (filters) {
+      return filterProducts(realProducts, filters);
+    }
+
+    return realProducts;
   } catch (error: any) {
     console.error('Error fetching products:', error);
     console.error('Error code:', error.code);

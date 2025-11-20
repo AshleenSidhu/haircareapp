@@ -1,10 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Products collection - readable by authenticated users, writable by authenticated users
+    // Products collection - allow read for all (public products), write only for authenticated users
     match /products/{productId} {
-      allow read: if request.auth != null; // Authenticated users can read products
-      allow write: if request.auth != null; // Authenticated users can write products (for initial population)
+      allow read: if true; // Anyone can read products (public catalog)
+      allow write: if request.auth != null; // Only authenticated users can write products
     }
     
     // Quiz results - users can only read/write their own

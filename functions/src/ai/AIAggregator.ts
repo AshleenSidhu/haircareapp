@@ -376,7 +376,7 @@ Product ${i + 1}: ${p.product.brand} ${p.product.name}
     for (const [key, explanation] of Object.entries(explanations)) {
       if (lowerName.includes(key)) {
         return explanation;
-      }
+    }
     }
 
     // Generic educational explanation

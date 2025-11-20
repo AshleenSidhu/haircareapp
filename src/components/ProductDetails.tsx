@@ -23,6 +23,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { likeProduct, unlikeProduct, isProductLiked } from '../lib/utils/products';
 import { useToast } from '../hooks/use-toast';
+import { getProductDetails } from '../lib/firebase';
 
 interface ProductDetailsProps {
   product: Product | null;
@@ -41,12 +42,42 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
   const { toast } = useToast();
   const [isLiked, setIsLiked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [enrichedProduct, setEnrichedProduct] = useState<Product | null>(product);
+  const [loadingEnrichment, setLoadingEnrichment] = useState(false);
 
   useEffect(() => {
     if (product && currentUser) {
       checkLikedStatus();
     }
   }, [product, currentUser]);
+
+  // Fetch enriched product data with AI explanations when dialog opens
+  useEffect(() => {
+    if (open && product && currentUser) {
+      fetchEnrichedProduct();
+    } else {
+      setEnrichedProduct(product);
+    }
+  }, [open, product, currentUser]);
+
+  const fetchEnrichedProduct = async () => {
+    if (!product || !currentUser) return;
+    
+    setLoadingEnrichment(true);
+    try {
+      const result = await getProductDetails({ productId: product.id });
+      const enriched = result.data as { product: Product };
+      if (enriched?.product) {
+        setEnrichedProduct(enriched.product);
+      }
+    } catch (error: any) {
+      console.error('Error fetching enriched product:', error);
+      // Keep original product if enrichment fails
+      setEnrichedProduct(product);
+    } finally {
+      setLoadingEnrichment(false);
+    }
+  };
 
   const checkLikedStatus = async () => {
     if (!product || !currentUser) return;
@@ -99,14 +130,17 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
 
   if (!product) return null;
 
+  // Use enriched product if available, otherwise use original
+  const displayProduct = enrichedProduct || product;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <DialogTitle className="text-3xl mb-2">{product.title}</DialogTitle>
-              <p className="text-lg text-muted-foreground">{product.brand}</p>
+              <DialogTitle className="text-3xl mb-2">{displayProduct.title}</DialogTitle>
+              <p className="text-lg text-muted-foreground">{displayProduct.brand}</p>
             </div>
             <Button
               variant="ghost"
@@ -121,21 +155,32 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
+          {loadingEnrichment && (
+            <div className="text-center py-4 text-muted-foreground">
+              <Sparkles className="w-5 h-5 inline-block mr-2 animate-pulse" />
+              Loading AI-powered ingredient explanations...
+            </div>
+          )}
+
           {/* Main Image */}
-          {product.imageUrl && (
+          {displayProduct.imageUrl && (
             <div className="w-full h-64 rounded-lg overflow-hidden bg-muted">
               <img
-                src={product.imageUrl}
-                alt={product.title}
+                src={displayProduct.imageUrl}
+                alt={displayProduct.title}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to a better placeholder if image fails
+                  (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=400&fit=crop&q=80`;
+                }}
               />
             </div>
           )}
 
           {/* Tags */}
-          {product.tags.length > 0 && (
+          {displayProduct.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {product.tags.map((tag, index) => (
+              {displayProduct.tags.map((tag, index) => (
                 <Badge key={index} variant="secondary">
                   {tag}
                 </Badge>
@@ -144,18 +189,18 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
           )}
 
           {/* Reviews Summary */}
-          {product.reviews && product.reviews.totalReviews > 0 && (
+          {displayProduct.reviews && displayProduct.reviews.totalReviews > 0 && (
             <Card className="p-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
                   <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                   <span className="text-2xl font-semibold">
-                    {product.reviews.averageRating.toFixed(1)}
+                    {displayProduct.reviews.averageRating.toFixed(1)}
                   </span>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    {product.reviews.totalReviews} reviews
+                    {displayProduct.reviews.totalReviews} reviews
                   </p>
                 </div>
               </div>
@@ -163,14 +208,14 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
           )}
 
           {/* AI Recommendation Explanation */}
-          {product.aiRecommendationExplanation && (
+          {displayProduct.aiRecommendationExplanation && (
             <Card className="p-4 bg-primary/5 border-primary/20">
               <div className="flex items-start gap-3">
                 <Sparkles className="w-5 h-5 text-primary mt-0.5" />
                 <div>
                   <h3 className="font-semibold mb-2">Why this product fits you</h3>
                   <p className="text-sm text-muted-foreground">
-                    {product.aiRecommendationExplanation}
+                    {displayProduct.aiRecommendationExplanation}
                   </p>
                 </div>
               </div>
@@ -180,11 +225,14 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
           <Separator />
 
           {/* Ingredients with AI Explanations */}
-          {product.ingredients && product.ingredients.length > 0 && (
+          {displayProduct.ingredients && displayProduct.ingredients.length > 0 && (
             <div>
-              <h3 className="text-xl font-semibold mb-4">Ingredients</h3>
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Ingredients & AI Explanations
+              </h3>
               <div className="space-y-3">
-                {product.ingredients.map((ingredient, index) => {
+                {displayProduct.ingredients.map((ingredient, index) => {
                   // Handle both string and IngredientWithExplanation formats
                   const ingredientName = typeof ingredient === 'string' ? ingredient : ingredient.name;
                   const ingredientExplanation = typeof ingredient === 'string' 
@@ -235,14 +283,14 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
           <Separator />
 
           {/* Safety & Allergen Warnings */}
-          {product.safety && product.safety.allergenWarnings && product.safety.allergenWarnings.length > 0 && (
+          {displayProduct.safety && displayProduct.safety.allergenWarnings && displayProduct.safety.allergenWarnings.length > 0 && (
             <div>
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Shield className="w-5 h-5" />
                 Safety & Allergen Warnings
               </h3>
               <div className="space-y-2">
-                {product.safety.allergenWarnings.map((warning, index) => (
+                {displayProduct.safety.allergenWarnings.map((warning, index) => (
                   <Card
                     key={index}
                     className={`p-3 ${
@@ -285,7 +333,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
               Sustainability
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {product.sustainability.ecoFriendly && (
+              {displayProduct.sustainability.ecoFriendly && (
                 <Card className="p-3 bg-green-50 border-green-200">
                   <div className="flex items-center gap-2">
                     <Leaf className="w-4 h-4 text-green-600" />
@@ -293,7 +341,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
                   </div>
                 </Card>
               )}
-              {product.sustainability.sustainable && (
+              {displayProduct.sustainability.sustainable && (
                 <Card className="p-3 bg-green-50 border-green-200">
                   <div className="flex items-center gap-2">
                     <Leaf className="w-4 h-4 text-green-600" />
@@ -301,7 +349,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
                   </div>
                 </Card>
               )}
-              {product.sustainability.crueltyFree && (
+              {displayProduct.sustainability.crueltyFree && (
                 <Card className="p-3 bg-green-50 border-green-200">
                   <div className="flex items-center gap-2">
                     <Leaf className="w-4 h-4 text-green-600" />
@@ -309,7 +357,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
                   </div>
                 </Card>
               )}
-              {product.sustainability.locallyOwned && (
+              {displayProduct.sustainability.locallyOwned && (
                 <Card className="p-3 bg-blue-50 border-blue-200">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-blue-600" />
@@ -317,7 +365,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
                   </div>
                 </Card>
               )}
-              {product.sustainability.smallBrand && (
+              {displayProduct.sustainability.smallBrand && (
                 <Card className="p-3 bg-blue-50 border-blue-200">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-blue-600" />
@@ -326,10 +374,10 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
                 </Card>
               )}
             </div>
-            {product.sustainability.explanation && (
+            {displayProduct.sustainability.explanation && (
               <Card className="p-4 mt-3 bg-green-50 border-green-200">
                 <p className="text-sm text-muted-foreground">
-                  {product.sustainability.explanation}
+                  {displayProduct.sustainability.explanation}
                 </p>
               </Card>
             )}
@@ -338,11 +386,11 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
           <Separator />
 
           {/* Google Reviews */}
-          {product.reviews && product.reviews.reviews && product.reviews.reviews.length > 0 && (
+          {displayProduct.reviews && displayProduct.reviews.reviews && displayProduct.reviews.reviews.length > 0 && (
             <div>
               <h3 className="text-xl font-semibold mb-4">Customer Reviews</h3>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {product.reviews.reviews.map((review, index) => (
+                {displayProduct.reviews.reviews.map((review, index) => (
                   <Card key={index} className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -370,11 +418,11 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
           )}
 
           {/* External Link */}
-          {product.url && (
+          {displayProduct.url && (
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => window.open(product.url, '_blank')}
+              onClick={() => window.open(displayProduct.url, '_blank')}
             >
               <ExternalLink className="w-4 h-4 mr-2" />
               View Product Details

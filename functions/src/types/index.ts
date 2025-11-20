@@ -24,18 +24,29 @@ export interface Product {
   name: string;
   brand: string;
   upc?: string;
+  barcode?: string; // OBF code (barcode)
   description?: string;
   imageUrl?: string;
   price?: number;
   currency?: string;
   tags: string[];
   ingredients?: string[];
+  ingredients_inci?: string; // Raw INCI ingredient text
+  ingredients_raw?: Array<{ text: string; id?: string }>; // Raw ingredient objects
+  normalized_ingredients?: string[]; // Normalized INCI names
+  categories?: string[]; // Product categories
+  images?: {
+    front?: string;
+    ingredients?: string;
+  };
   ingredientSafety?: IngredientSafetyData;
   sustainability?: SustainabilityData;
   reviews?: ReviewData;
-  source: 'openbeautyfacts' | 'beautyfeeds' | 'manual';
+  source: 'openbeautyfacts' | 'beautyfeeds' | 'manual' | 'open_beauty_facts';
   sourceId?: string;
   url?: string;
+  last_modified_server?: number; // OBF last_modified_t timestamp
+  last_synced_at?: number | any; // Timestamp when synced to our DB
 }
 
 export interface IngredientSafetyData {

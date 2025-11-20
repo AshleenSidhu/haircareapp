@@ -13,9 +13,7 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Label } from "../components/ui/label";
 import { ProductDetails } from "../components/ProductDetails";
 import { Product, ProductFilters } from "../lib/types/products";
-import { fetchProducts, filterProducts } from "../lib/utils/products";
-import { syncProductsToFirestore } from "../lib/utils/productSync";
-import { populateDatabase } from "../lib/utils/populateDatabase";
+import { filterProducts, fetchProducts } from "../lib/utils/products";
 import { 
   Filter, 
   Search, 
@@ -28,9 +26,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../hooks/use-toast";
+import { syncProducts as syncProductsFunction } from "../lib/firebase";
 
 const Products = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -46,38 +45,132 @@ const Products = () => {
   const [includeIngredientInput, setIncludeIngredientInput] = useState("");
   const [excludeIngredientInput, setExcludeIngredientInput] = useState("");
 
-  // Auto-load products from database on mount
+  // Auto-load products from Firestore on mount (no CORS issues!)
   useEffect(() => {
     const initializeProducts = async () => {
+      // Wait for auth to be ready
+      if (authLoading) {
+        return;
+      }
+      
       try {
-        // First, try to load existing products from database
-        const fetchedProducts = await fetchProducts(undefined, 200);
+        setLoading(true);
         
-        if (fetchedProducts.length > 0) {
-          // Products exist, set them
-          setProducts(fetchedProducts);
-          setFilteredProducts(fetchedProducts);
+        // First, try to load products from Firestore (fast, no CORS issues)
+        console.log('[Products] Loading products from Firestore...');
+        const firestoreProducts = await fetchProducts(undefined, 200);
+        
+        if (firestoreProducts && firestoreProducts.length > 0) {
+          console.log(`[Products] Loaded ${firestoreProducts.length} products from Firestore`);
+          console.log('[Products] First product sample:', firestoreProducts[0]);
+          setProducts(firestoreProducts);
+          setFilteredProducts(firestoreProducts);
           setLoading(false);
+          
+          // Optionally sync in background to update products (non-blocking)
+          if (currentUser && !hasAttemptedSyncRef.current) {
+            hasAttemptedSyncRef.current = true;
+            // Sync in background without blocking UI
+            syncProductsFunction({
+              tags: ['shampoo', 'conditioner', 'hair-care'],
+              limit: 100
+            }).then((syncResult) => {
+              // Callable functions return data directly
+              const result = (syncResult.data || syncResult) as { 
+                success: boolean; 
+                productsSynced: number;
+              };
+              if (result.success && result.productsSynced > 0) {
+                // Reload products after sync
+                fetchProducts(undefined, 200).then((updatedProducts) => {
+                  if (updatedProducts.length > 0) {
+                    setProducts(updatedProducts);
+                    setFilteredProducts(updatedProducts);
+                  }
+                });
+              }
+            }).catch((error) => {
+              console.warn('[Products] Background sync failed (non-critical):', error);
+            });
+          }
         } else {
-          // No products found, silently populate database in background
-          if (!hasAttemptedSyncRef.current) {
-            console.log('[Products] No products found, populating database...');
+          // No products in Firestore - trigger sync
+          console.warn('[Products] No products returned from fetchProducts');
+          console.warn('[Products] This could mean:');
+          console.warn('  1. No products in Firestore - try syncing products');
+          console.warn('  2. Products exist but were filtered out');
+          console.warn('  3. Firestore query failed - check console for errors');
+          setLoading(false);
+          
+          console.log('[Products] No products in Firestore, triggering sync...');
+          if (currentUser && !hasAttemptedSyncRef.current) {
             hasAttemptedSyncRef.current = true;
             setSyncing(true);
             
             try {
-              const result = await populateDatabase();
-              console.log(`[Products] Database populated: ${result.productsAdded} products added`);
+              await currentUser.getIdToken();
+              console.log('[Products] Calling syncProducts (handleSyncProducts)...');
+              console.log('[Products] User:', currentUser?.uid);
+              console.log('[Products] Function name: syncProducts');
               
-              // Wait a bit for Firestore to process
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              let syncResult;
+              try {
+                syncResult = await syncProductsFunction({
+                  tags: ['shampoo', 'conditioner', 'hair-care'],
+                  limit: 100
+                });
+                console.log('[Products] Sync result received:', syncResult);
+                console.log('[Products] Sync result type:', typeof syncResult);
+                console.log('[Products] Sync result keys:', syncResult ? Object.keys(syncResult) : 'null');
+                console.log('[Products] Sync result.data:', syncResult?.data);
+              } catch (funcError: any) {
+                console.error('[Products] Function call error:', funcError);
+                console.error('[Products] Error code:', funcError.code);
+                console.error('[Products] Error message:', funcError.message);
+                console.error('[Products] Error details:', funcError.details);
+                throw funcError;
+              }
               
-              // Reload products after population
-              await loadProducts();
+              // Firebase callable functions wrap response in .data
+              if (!syncResult) {
+                throw new Error('syncProducts returned null or undefined');
+              }
+              
+              if (!syncResult.data) {
+                console.error('[Products] Response structure:', JSON.stringify(syncResult, null, 2));
+                throw new Error('Invalid response from syncProducts: missing data field. The function may not be deployed or may have returned an unexpected format.');
+              }
+              
+              const result = syncResult.data as { 
+                success: boolean; 
+                productsSynced: number;
+              };
+              
+              if (result && result.success) {
+                // Reload products from Firestore after sync
+                const syncedProducts = await fetchProducts(undefined, 200);
+                if (syncedProducts.length > 0) {
+                  setProducts(syncedProducts);
+                  setFilteredProducts(syncedProducts);
+                  toast({
+                    title: "Products synced",
+                    description: `Successfully synced ${result.productsSynced} products from APIs.`,
+                  });
+                }
+              }
             } catch (error: any) {
-              console.error('[Products] Error populating database:', error);
+              console.error('[Products] Error syncing products:', error);
+              console.error('[Products] Error code:', error.code);
+              console.error('[Products] Error message:', error.message);
+              console.error('[Products] Error details:', error.details);
+              toast({
+                title: "Sync failed",
+                description: error.message || "Could not sync products. Please try again later.",
+                variant: "destructive",
+              });
             } finally {
               setSyncing(false);
+              setLoading(false);
             }
           } else {
             setLoading(false);
@@ -90,8 +183,7 @@ const Products = () => {
     };
 
     initializeProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentUser, authLoading]);
 
   useEffect(() => {
     // Apply filters when products or filters change
@@ -107,40 +199,29 @@ const Products = () => {
     try {
       setLoading(true);
       console.log('[Products] Loading products from Firestore...');
-      const fetchedProducts = await fetchProducts(undefined, 200); // Increased limit to show all products
-      console.log(`[Products] Loaded ${fetchedProducts.length} products from Firestore`);
       
-      // Debug: Check if products have images
-      if (fetchedProducts.length > 0) {
-        console.log('[Products] First product:', fetchedProducts[0]);
-        console.log('[Products] First product imageUrl:', fetchedProducts[0].imageUrl);
-        const productsWithImages = fetchedProducts.filter(p => p.imageUrl);
-        console.log(`[Products] Products with images: ${productsWithImages.length}/${fetchedProducts.length}`);
-      }
+      // Load products from Firestore (no CORS issues!)
+      const firestoreProducts = await fetchProducts(undefined, 200);
       
-      // Filter out any undefined/null products and ensure all have required fields
-      const validProducts = fetchedProducts.filter((p): p is Product => 
-        p != null && 
-        typeof p === 'object' && 
-        p.id != null && 
-        p.title != null && 
-        p.brand != null
-      );
-      
-      console.log(`[Products] Valid products: ${validProducts.length} (filtered ${fetchedProducts.length - validProducts.length} invalid)`);
-      
-      setProducts(validProducts);
-      setFilteredProducts(validProducts);
-    } catch (error: any) {
-      console.error("Error loading products:", error);
-      // Don't show toast for empty results, only for actual errors
-      if (error.message && !error.message.includes('empty')) {
+      if (firestoreProducts && firestoreProducts.length > 0) {
+        console.log(`[Products] Loaded ${firestoreProducts.length} products from Firestore`);
+        setProducts(firestoreProducts);
+        setFilteredProducts(firestoreProducts);
+      } else {
+        console.warn('[Products] No products in Firestore');
         toast({
-          title: "Error loading products",
-          description: error.message || "Please try again later.",
+          title: "No products found",
+          description: "No products available. Try syncing products first.",
           variant: "destructive",
         });
       }
+    } catch (error: any) {
+      console.error("Error loading products:", error);
+      toast({
+        title: "Error loading products",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -170,48 +251,98 @@ const Products = () => {
       if (showToast) {
         toast({
           title: "Syncing products...",
-          description: "Fetching products from APIs. This may take a minute.",
+          description: "Fetching products from APIs and storing in Firestore. This may take a minute.",
         });
       }
 
-      console.log('[Products] Starting product sync...');
+      console.log('[Products] Starting product sync via Firebase Function...');
       console.log('[Products] User authenticated:', currentUser.uid);
-      const result = await syncProductsToFirestore(['shampoo', 'conditioner', 'hair-care', 'hair-treatment'], 150); // Increased to sync all 120+ products
       
-      console.log(`[Products] Sync result: ${result.success}, products synced: ${result.productsSynced}`);
+      // Get auth token
+      await currentUser.getIdToken();
       
-      if (result.success) {
-        if (showToast) {
-          toast({
-            title: "Products synced!",
-            description: `Successfully synced ${result.productsSynced} products to the database.`,
-          });
+      // Use Firebase Function to sync real products from APIs (Open Beauty Facts)
+      console.log('[Products] Calling syncProducts callable function...');
+      console.log('[Products] User authenticated:', !!currentUser);
+      console.log('[Products] User ID:', currentUser?.uid);
+      
+      let result;
+      try {
+        result = await syncProductsFunction({
+          tags: ['shampoo', 'conditioner', 'hair-care'],
+          limit: 100
+        });
+        console.log('[Products] Sync function returned:', result);
+        console.log('[Products] Result type:', typeof result);
+        console.log('[Products] Result.data:', result.data);
+        console.log('[Products] Result keys:', Object.keys(result));
+      } catch (callError: any) {
+        console.error('[Products] Error calling syncProducts:', callError);
+        console.error('[Products] Error code:', callError.code);
+        console.error('[Products] Error message:', callError.message);
+        console.error('[Products] Error details:', callError.details);
+        throw callError; // Re-throw to be caught by outer catch
+      }
+      
+      // Firebase callable functions return { data: <result> }
+      // But if the function throws an error, result might be undefined
+      if (!result) {
+        throw new Error('syncProducts returned undefined');
+      }
+      
+      // Access the data field (Firebase callable functions wrap response in .data)
+      const syncResult = result.data as { 
+        success: boolean; 
+        productsSynced: number; 
+        totalFound: number;
+        errors?: string[] 
+      };
+      
+      if (!syncResult) {
+        throw new Error('syncProducts result.data is undefined');
+      }
+      
+      console.log(`[Products] Sync result: ${syncResult.success}, products synced: ${syncResult.productsSynced}`);
+      
+      if (syncResult.success && syncResult.productsSynced > 0) {
+        // Reload products from Firestore (no CORS issues!)
+        console.log('[Products] Reloading products from Firestore after sync...');
+        const syncedProducts = await fetchProducts(undefined, 200);
+        
+        if (syncedProducts.length > 0) {
+          setProducts(syncedProducts);
+          setFilteredProducts(syncedProducts);
+          
+          if (showToast) {
+            toast({
+              title: "Products synced!",
+              description: `Successfully synced ${syncResult.productsSynced} products from APIs.`,
+            });
+          }
+        } else {
+          if (showToast) {
+            toast({
+              title: "Sync completed",
+              description: `Synced ${syncResult.productsSynced} products, but couldn't load them from Firestore.`,
+              variant: "destructive",
+            });
+          }
         }
-        
-        // Wait a bit before reloading to ensure Firestore has processed the writes
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Reload products after sync
-        await loadProducts();
       } else {
         if (showToast) {
           toast({
-            title: "Sync completed with errors",
-            description: result.errors?.join(', ') || "Some products may not have synced.",
+            title: "No products synced",
+            description: syncResult.errors?.join(', ') || "Could not sync products from APIs.",
             variant: "destructive",
           });
         }
-        
-        // Still reload to show what was synced
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await loadProducts();
       }
     } catch (error: any) {
       console.error("Error syncing products:", error);
       if (showToast) {
         toast({
-          title: "Error syncing products",
-          description: error.message || "Please try again later.",
+          title: "Sync Error",
+          description: error.message || "Failed to sync real products from APIs. Only real products from Open Beauty Facts and BeautyFeeds are used - no mock data.",
           variant: "destructive",
         });
       }
@@ -595,10 +726,20 @@ const Products = () => {
           </Card>
         ) : filteredProducts.length === 0 ? (
           <Card className="p-12 text-center">
-            <p className="text-muted-foreground">No products found matching your filters.</p>
+            <p className="text-muted-foreground mb-4">
+              {hasActiveFilters() 
+                ? "No products found matching your filters."
+                : "No products found. Try syncing products from Open Beauty Facts."}
+            </p>
             {hasActiveFilters() && (
               <Button variant="outline" className="mt-4" onClick={clearFilters}>
                 Clear Filters
+              </Button>
+            )}
+            {!hasActiveFilters() && currentUser && (
+              <Button variant="outline" className="mt-4" onClick={() => handleSyncProducts(true)}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Sync Products
               </Button>
             )}
           </Card>

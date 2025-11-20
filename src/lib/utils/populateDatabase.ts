@@ -152,8 +152,25 @@ export async function populateDatabase(): Promise<{ success: boolean; productsAd
     for (const product of allProducts) {
       try {
         // Transform to our Product format
-        // Ensure imageUrl is always set (use placeholder if missing)
-        const productImageUrl = product.imageUrl || `https://picsum.photos/400/400?random=${product.id}`;
+        // Use better product images - use hair care product images from Unsplash
+        const getProductImage = (productName: string, brand: string, index: number) => {
+          // Use a hash of product name to get consistent but varied images
+          const hash = Math.abs(productName.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+          }, 0));
+          // Use different hair care product images from Unsplash
+          const imageIds = [
+            '1556228578-0d85b1a4d571', // Hair care products
+            '1628088439291-6a99040a0b30', // Shampoo bottle
+            '1608572933965-9936461f10a4', // Hair products
+            '1608572933965-9936461f10a4', // Beauty products
+            '1608572933965-9936461f10a4', // Cosmetics
+          ];
+          const imageIndex = hash % imageIds.length;
+          return `https://images.unsplash.com/photo-${imageIds[imageIndex]}?w=400&h=400&fit=crop&q=80`;
+        };
+        const productImageUrl = product.imageUrl || getProductImage(product.name, product.brand, productsAdded);
         
         const enrichedProduct: Product = {
           id: product.id,

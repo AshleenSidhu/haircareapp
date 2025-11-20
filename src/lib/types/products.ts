@@ -31,7 +31,7 @@ export interface Product {
   aiRecommendationExplanation?: string;
   
   // Metadata
-  source: 'openbeautyfacts' | 'beautyfeeds' | 'manual';
+  source: 'openbeautyfacts' | 'beautyfeeds' | 'manual' | 'open_beauty_facts';
   sourceId?: string;
   url?: string;
   createdAt?: Date;
