@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { NavLink } from "@/components/NavLink";
-import { Button } from "@/components/ui/button";
+import { NavLink } from "components/NavLink";
+import { Button } from "components/ui/button";
 import { Menu, X, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "lib/utils";
+import { useAuth } from "contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const navigationItems = [
