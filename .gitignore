@@ -2,6 +2,7 @@
 
 #model
 public/models/yolov8n-cls.onnx
+public/models/yolo11.onnx
 
 # dependencies
 /node_modules
