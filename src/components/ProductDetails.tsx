@@ -66,12 +66,18 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
     setLoadingEnrichment(true);
     try {
       const result = await getProductDetails({ productId: product.id });
-      const enriched = result.data as { product: Product };
+      // Firebase callable functions wrap response in .data
+      const enriched = result?.data as { product: Product };
       if (enriched?.product) {
         setEnrichedProduct(enriched.product);
       }
     } catch (error: any) {
-      console.error('Error fetching enriched product:', error);
+      // Silently handle errors - enrichment is optional
+      if (error?.code === 'functions/not-found') {
+        console.warn('[ProductDetails] getProductDetails function not deployed yet');
+      } else {
+        console.warn('[ProductDetails] Error fetching enriched product:', error?.message || error);
+      }
       // Keep original product if enrichment fails
       setEnrichedProduct(product);
     } finally {

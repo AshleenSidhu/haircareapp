@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@google/genai": "^1.30.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
@@ -49,6 +50,7 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.554.0",
     "next-themes": "^0.4.6",
+    "onnxruntime-web": "^1.23.2",
     "react": "^19.2.0",
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.2.0",
@@ -90,6 +92,7 @@
   "devDependencies": {
     "@craco/craco": "^7.1.0",
     "autoprefixer": "^10.4.22",
+    "craco-alias": "^3.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18"
   }

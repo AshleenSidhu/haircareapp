@@ -1,5 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+#model
+public/models/yolov8n-cls.onnx
+
 # dependencies
 /node_modules
 /.pnp

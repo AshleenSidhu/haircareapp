@@ -75,22 +75,33 @@ const Products = () => {
               tags: ['shampoo', 'conditioner', 'hair-care'],
               limit: 100
             }).then((syncResult) => {
-              // Callable functions return data directly
-              const result = (syncResult.data || syncResult) as { 
-                success: boolean; 
-                productsSynced: number;
-              };
-              if (result.success && result.productsSynced > 0) {
-                // Reload products after sync
-                fetchProducts(undefined, 200).then((updatedProducts) => {
-                  if (updatedProducts.length > 0) {
-                    setProducts(updatedProducts);
-                    setFilteredProducts(updatedProducts);
-                  }
-                });
+              // Firebase callable functions always wrap response in .data
+              // Handle both cases for safety
+              const result = syncResult?.data || syncResult;
+              if (result && typeof result === 'object' && 'success' in result) {
+                const syncData = result as { 
+                  success: boolean; 
+                  productsSynced: number;
+                };
+                if (syncData.success && syncData.productsSynced > 0) {
+                  // Reload products after sync
+                  fetchProducts(undefined, 200).then((updatedProducts) => {
+                    if (updatedProducts.length > 0) {
+                      setProducts(updatedProducts);
+                      setFilteredProducts(updatedProducts);
+                    }
+                  });
+                }
               }
-            }).catch((error) => {
-              console.warn('[Products] Background sync failed (non-critical):', error);
+            }).catch((error: any) => {
+              // Silently handle background sync errors - they're non-critical
+              if (error?.code === 'functions/not-found') {
+                console.warn('[Products] syncProducts function not deployed yet');
+              } else if (error?.message?.includes('missing data field')) {
+                console.warn('[Products] syncProducts returned invalid response - function may need redeployment');
+              } else {
+                console.warn('[Products] Background sync failed (non-critical):', error?.message || error);
+              }
             });
           }
         } else {
@@ -136,15 +147,16 @@ const Products = () => {
                 throw new Error('syncProducts returned null or undefined');
               }
               
-              if (!syncResult.data) {
-                console.error('[Products] Response structure:', JSON.stringify(syncResult, null, 2));
-                throw new Error('Invalid response from syncProducts: missing data field. The function may not be deployed or may have returned an unexpected format.');
-              }
-              
-              const result = syncResult.data as { 
+              // Handle response - Firebase callable functions always wrap in .data
+              const result = (syncResult?.data || syncResult) as { 
                 success: boolean; 
                 productsSynced: number;
               };
+              
+              if (!result || typeof result !== 'object' || !('success' in result)) {
+                console.error('[Products] Invalid response structure:', JSON.stringify(syncResult, null, 2));
+                throw new Error('Invalid response from syncProducts: missing data field. The function may not be deployed or may have returned an unexpected format.');
+              }
               
               if (result && result.success) {
                 // Reload products from Firestore after sync
@@ -291,15 +303,17 @@ const Products = () => {
       }
       
       // Access the data field (Firebase callable functions wrap response in .data)
-      const syncResult = result.data as { 
+      // Handle both cases for safety
+      const syncResult = (result?.data || result) as { 
         success: boolean; 
         productsSynced: number; 
         totalFound: number;
         errors?: string[] 
       };
       
-      if (!syncResult) {
-        throw new Error('syncProducts result.data is undefined');
+      if (!syncResult || typeof syncResult !== 'object' || !('success' in syncResult)) {
+        console.error('[Products] Invalid response structure:', JSON.stringify(result, null, 2));
+        throw new Error('syncProducts returned invalid response. The function may not be deployed or may have returned an unexpected format.');
       }
       
       console.log(`[Products] Sync result: ${syncResult.success}, products synced: ${syncResult.productsSynced}`);
