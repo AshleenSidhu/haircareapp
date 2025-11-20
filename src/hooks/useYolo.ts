@@ -8,14 +8,28 @@ export function useYolo(modelPath: string = "/models/yolov8n-cls.onnx") {
   useEffect(() => {
     const load = async () => {
       try {
+        // First, check if the model file exists
+        const response = await fetch(modelPath, { method: 'HEAD' });
+        if (!response.ok) {
+          throw new Error(`Model file not found at ${modelPath}`);
+        }
+
         const s = await ort.InferenceSession.create(modelPath, {
           executionProviders: ["wasm"], // or "webgpu"
         });
         setSession(s);
         setError(null);
       } catch (err: any) {
-        console.warn('[useYolo] Failed to load ONNX model:', err?.message || err);
-        setError(err?.message || 'Failed to load model');
+        // Log detailed error for debugging
+        const errorMessage = err?.message || 'Failed to load model';
+        console.warn('[useYolo] Failed to load ONNX model:', errorMessage);
+        console.warn('[useYolo] Error details:', {
+          code: err?.code,
+          message: err?.message,
+          path: modelPath,
+          suggestion: 'The model file may be missing, corrupted, or incompatible. The app will continue without AI model features.'
+        });
+        setError(errorMessage);
         setSession(null);
       }
     };
