@@ -20,6 +20,8 @@ export { syncProducts } from './productSync';
 export { apiProducts, apiProductById } from './api/products';
 export { apiIngredient } from './api/ingredients';
 export { getHaircarePlaceholder } from './api/placeholders';
+export { getProductDetails } from './api/productDetails';
+export { chatWithAI } from './api/aiChat';
 
 // Initialize Firebase Admin if not already initialized
 try {

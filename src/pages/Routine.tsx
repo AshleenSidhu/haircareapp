@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Sun, Moon, Calendar, ArrowRight } from "lucide-react";
+import { Sun, Moon, Calendar, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -28,6 +28,14 @@ const Routine = () => {
     <Layout>
       <div className="min-h-screen bg-background pt-24 pb-12 px-4">
         <div className="max-w-3xl mx-auto fade-in">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/dashboard")}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">Your Routine</h1>
           <p className="text-muted-foreground text-lg">A simple schedule tailored to your hair</p>

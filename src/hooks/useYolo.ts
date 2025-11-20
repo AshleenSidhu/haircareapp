@@ -3,13 +3,21 @@ import * as ort from "onnxruntime-web";
 
 export function useYolo(modelPath: string = "/models/yolov8n-cls.onnx") {
   const [session, setSession] = useState<ort.InferenceSession | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const s = await ort.InferenceSession.create(modelPath, {
-        executionProviders: ["wasm"], // or "webgpu"
-      });
-      setSession(s);
+      try {
+        const s = await ort.InferenceSession.create(modelPath, {
+          executionProviders: ["wasm"], // or "webgpu"
+        });
+        setSession(s);
+        setError(null);
+      } catch (err: any) {
+        console.warn('[useYolo] Failed to load ONNX model:', err?.message || err);
+        setError(err?.message || 'Failed to load model');
+        setSession(null);
+      }
     };
     load();
   }, [modelPath]);
@@ -78,7 +86,7 @@ export function useYolo(modelPath: string = "/models/yolov8n-cls.onnx") {
     return outputs;
   };
 
-  return { session, runModel };
+  return { session, runModel, error };
 }
 
 // Basic preprocessing (adjust to your YOLO version)

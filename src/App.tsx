@@ -11,6 +11,9 @@ import Quiz from "./pages/Quiz";
 import Results from "./pages/Results";
 import Routine from "./pages/Routine";
 import Community from "./pages/Community";
+import { RegimenView } from "./pages/RegimenView";
+import { CreateRegimen } from "./pages/CreateRegimen";
+import Chat from "./pages/Chat";
 import Progress from "./pages/Progress";
 import Booking from "./pages/Booking";
 import Products from "./pages/Products";
@@ -35,7 +38,8 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/products" element={<Products />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
             <Route path="/tips" element={<Tips />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
@@ -49,6 +53,8 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/community" element={<Community />} />
+            <Route path="/community/create" element={<ProtectedRoute><CreateRegimen /></ProtectedRoute>} />
+            <Route path="/community/regimen/:regimenId" element={<ProtectedRoute><RegimenView /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
             <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

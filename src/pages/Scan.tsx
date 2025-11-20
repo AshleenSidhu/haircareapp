@@ -15,8 +15,8 @@ const Scan = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
 
-  // Load YOLO model
-  const { session, runModel } = useYolo("/models/yolov8n-cls.onnx");
+  // Load YOLO model (optional - gracefully handles missing model)
+  const { session, runModel, error: modelError } = useYolo("/models/yolov8n-cls.onnx");
 
   // Simple label list for classification
   // (Replace with your actual hair type labels)

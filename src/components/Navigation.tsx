@@ -6,18 +6,28 @@ import { Menu, X, LogOut, LayoutDashboard, User } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-const navigationItems = [
+const baseNavigationItems = [
   { name: "Home", path: "/" },
-  { name: "Products", path: "/products" },
+  { name: "Chat", path: "/chat" },
   { name: "Tips", path: "/tips" },
   { name: "About", path: "/about" },
   { name: "Contact", path: "/contact" },
+];
+
+const authenticatedNavigationItems = [
+  { name: "Products", path: "/products" },
+  { name: "Community", path: "/community" },
 ];
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Combine navigation items - only show Products when logged in
+  const navigationItems = currentUser 
+    ? [...baseNavigationItems, ...authenticatedNavigationItems]
+    : baseNavigationItems;
 
   const handleLogout = async () => {
     await logout();

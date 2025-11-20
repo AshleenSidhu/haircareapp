@@ -28,6 +28,33 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Chat conversations - users can only read/write their own
+    match /chatConversations/{conversationId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Regimens collection - public read, authenticated write
+    match /regimens/{regimenId} {
+      allow read: if resource.data.isPublic == true || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Ingredient science - public read
+    match /ingredient_science/{ingredientId} {
+      allow read: if true;
+      allow write: if false; // Only backend can write
+    }
+    
+    // Staged products - authenticated read/write
+    match /staged_products/{productId} {
+      allow read, write: if request.auth != null;
+    }
+    
     // Default: deny all other access
     match /{document=**} {
       allow read, write: if false;
