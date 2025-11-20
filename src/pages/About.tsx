@@ -5,7 +5,7 @@ import { Heart, Users, Target } from "lucide-react";
 const About = () => {
   return (
     <Layout showBackButton>
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 pt-24 pb-12">
         <div className="text-center mb-16 fade-in">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">About Us</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

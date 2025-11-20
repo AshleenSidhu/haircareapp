@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from 'contexts/AuthContext';
-import { Button } from 'components/ui/button';
-import { Input } from 'components/ui/input';
-import { Card } from 'components/ui/card';
-import { useToast } from 'hooks/use-toast';
-import { Layout } from 'components/Layout';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card } from '../components/ui/card';
+import { useToast } from '../hooks/use-toast';
+import { Layout } from '../components/Layout';
 
 const SignUp = () => {
   const [email, setEmail] = useState('');
@@ -30,7 +30,7 @@ const SignUp = () => {
     try {
       setLoading(true);
       await signup(email, password);
-      navigate('/quiz');
+      navigate('/scan');
     } catch (error: any) {
       toast({
         title: "Sign up failed",
@@ -46,7 +46,7 @@ const SignUp = () => {
     try {
       setLoading(true);
       await loginWithGoogle();
-      navigate('/quiz');
+      navigate('/scan');
     } catch (error: any) {
       toast({
         title: "Sign up failed",

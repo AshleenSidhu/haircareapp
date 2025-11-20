@@ -1,0 +1,26 @@
+{
+  "hosting": {
+    "rewrites": [
+      {
+        "source": "/api/products",
+        "function": "apiProducts"
+      },
+      {
+        "source": "/api/products/**",
+        "function": "apiProductById"
+      },
+      {
+        "source": "/api/ingredients/**",
+        "function": "apiIngredient"
+      },
+      {
+        "source": "/api/placeholders/haircare",
+        "function": "getHaircarePlaceholder"
+      }
+    ]
+  },
+  "functions": {
+    "source": "functions"
+  }
+}
+

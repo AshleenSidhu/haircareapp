@@ -20,7 +20,7 @@ const Login = () => {
     try {
       setLoading(true);
       await login(email, password);
-      navigate('/quiz');
+      navigate('/scan');
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -36,7 +36,7 @@ const Login = () => {
     try {
       setLoading(true);
       await loginWithGoogle();
-      navigate('/quiz');
+      navigate('/scan');
     } catch (error: any) {
       toast({
         title: "Login failed",

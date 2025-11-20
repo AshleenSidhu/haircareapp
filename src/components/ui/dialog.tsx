@@ -2,7 +2,9 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
-import { cn } from "lib/utils";
+// TODO: The following import is currently broken (Cannot find module '../lib/utils')
+// You need to implement or correctly reference 'cn' utility function in your project.
+import { cn } from "../../lib/utils";
 
 const Dialog = DialogPrimitive.Root;
 

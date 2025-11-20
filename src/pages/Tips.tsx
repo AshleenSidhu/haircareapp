@@ -1,12 +1,12 @@
-import { Layout } from "components/Layout";
-import { Card } from "components/ui/card";
-import { Button } from "components/ui/button";
+import { Layout } from "../components/Layout";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
 import { BookOpen } from "lucide-react";
 
 const Tips = () => {
   return (
     <Layout showBackButton>
-      <div className="max-w-6xl mx-auto px-4 py-12">
+      <div className="max-w-6xl mx-auto px-4 pt-24 pb-12">
         <div className="text-center mb-12 fade-in">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">Tips & Articles</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

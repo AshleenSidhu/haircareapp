@@ -2,6 +2,7 @@ import { Star, ThumbsUp } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import { Layout } from "../components/Layout";
 import { useNavigate } from "react-router-dom";
 
 const Community = () => {
@@ -39,8 +40,9 @@ const Community = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background py-12 px-4">
-      <div className="max-w-4xl mx-auto fade-in">
+    <Layout>
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4">
+        <div className="max-w-4xl mx-auto fade-in">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">Community Insights</h1>
           <p className="text-muted-foreground text-lg">Real experiences from people with similar hair</p>
@@ -79,8 +81,9 @@ const Community = () => {
         <Button className="w-full" onClick={() => navigate("/results")}>
           Back to recommendations
         </Button>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

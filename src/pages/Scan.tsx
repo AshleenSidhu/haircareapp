@@ -1,12 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, Camera, ArrowRight } from "lucide-react";
-import { Button } from "components/ui/button";
-import { Card } from "components/ui/card";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Layout } from "../components/Layout";
+import { useAuth } from "../contexts/AuthContext";
+import { hasUserCompletedQuiz } from "../lib/quizUtils";
 
 const Scan = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Check if user has already completed quiz (non-blocking)
+  useEffect(() => {
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+
+    // Check in background without blocking UI
+    const checkQuizStatus = async () => {
+      try {
+        const hasCompleted = await hasUserCompletedQuiz(currentUser.uid);
+        if (hasCompleted) {
+          // Only redirect if user hasn't started uploading
+          navigate("/results");
+        }
+      } catch (error) {
+        console.error("Error checking quiz status:", error);
+        // Don't block UI on error
+      }
+    };
+
+    // Use a small timeout to allow UI to render first
+    const timeoutId = setTimeout(checkQuizStatus, 100);
+    return () => clearTimeout(timeoutId);
+  }, [currentUser, navigate]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -21,12 +51,17 @@ const Scan = () => {
 
   const handleAnalyze = () => {
     // In a real app, this would send to AI analysis
-    navigate("/quiz");
+    navigate("/quiz", { state: { image: selectedImage } });
   };
 
+  if (!currentUser) {
+    return null; // Will redirect to login
+  }
+
   return (
-    <div className="min-h-screen bg-background py-12 px-4">
-      <div className="max-w-2xl mx-auto fade-in">
+    <Layout>
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4">
+        <div className="max-w-2xl mx-auto fade-in">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">Hair Analysis</h1>
           <p className="text-muted-foreground text-lg">Upload a photo to begin your personalized hair journey</p>
@@ -86,8 +121,9 @@ const Scan = () => {
             Your photo is analyzed privately and never shared
           </p>
         </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
