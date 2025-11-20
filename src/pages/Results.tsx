@@ -306,6 +306,9 @@ const Results = () => {
             Build my routine
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
+          <Button onClick={() => navigate("/scan")}>
+            Retake analysis
+          </Button>
         </div>
         </div>
       </div>

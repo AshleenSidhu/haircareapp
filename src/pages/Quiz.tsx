@@ -15,7 +15,19 @@ import { collection, addDoc } from "firebase/firestore";
 import { useToast } from "../hooks/use-toast";
 import { hasUserCompletedQuiz } from "../lib/quizUtils";
 
+type QuizLocationState = {
+  image?: string;
+  hairType?: string;     // from YOLO
+  confidence?: number;   // from YOLO
+};
+
 const questions = [
+  {
+    id: "hairType",
+    question: "Detected hair type (you can change it):",
+    type: "single",
+    options: ["Straight", "Wavy", "Curly", "Kinky", "Dreadlocks"]
+  },
   {
     id: "thickness",
     question: "Your hair is:",
@@ -138,7 +150,7 @@ const questions = [
 
 const Quiz = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const location = useLocation() as { state: QuizLocationState };
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [currentQuestion, setCurrentQuestion] = useState(-1); // -1 means picture upload step
@@ -147,6 +159,18 @@ const Quiz = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(location.state?.image || null);
   const [saving, setSaving] = useState(false);
   const [hasCompletedQuizBefore, setHasCompletedQuizBefore] = useState(false);
+  const detectedHairType = location.state?.hairType || null;
+
+useEffect(() => {
+  const detected = location.state?.hairType;
+  if (detected && currentQuestion === 0) {
+    setAnswers(prev => ({
+      ...prev,
+      hairType: detected
+    }));
+  }
+}, [location.state?.hairType, currentQuestion]);
+
 
   // Check if user has already completed quiz (non-blocking)
   // Only check on initial load, not when user is actively taking the quiz
