@@ -168,20 +168,10 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
             </div>
           )}
 
-          {/* Main Image */}
-          {displayProduct.imageUrl && (
-            <div className="w-full h-64 rounded-lg overflow-hidden bg-muted">
-              <img
-                src={displayProduct.imageUrl}
-                alt={displayProduct.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to a better placeholder if image fails
-                  (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=400&fit=crop&q=80`;
-                }}
-              />
-            </div>
-          )}
+          {/* Main Image (placeholder only) */}
+          <div className="w-full h-64 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+            <Sparkles className="w-12 h-12 text-primary" />
+          </div>
 
           {/* Tags */}
           {displayProduct.tags.length > 0 && (
