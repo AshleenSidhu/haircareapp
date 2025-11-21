@@ -1,5 +1,7 @@
 # Gemini API Key Setup
 
+
+
 ## ✅ Already Configured
 
 The API key has been set in Firebase Functions config using:
