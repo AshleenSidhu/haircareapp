@@ -28,6 +28,75 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Chat conversations - users can only read/write their own
+    match /chatConversations/{conversationId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Regimens collection - public read, authenticated write
+    match /regimens/{regimenId} {
+      allow read: if resource.data.isPublic == true || (request.auth != null && resource.data.authorId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+    }
+    
+    // Regimen likes - authenticated users can create/delete their own likes
+    match /regimenLikes/{likeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Regimen saves - authenticated users can create/delete their own saves
+    match /regimenSaves/{saveId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Comments - authenticated users can read public comments, create their own
+    match /comments/{commentId} {
+      allow read: if true; // Anyone can read comments on public regimens
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+    }
+    
+    // Follows - authenticated users can manage their own follows
+    match /follows/{followId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.followerId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.followerId == request.auth.uid;
+    }
+    
+    // Reports - authenticated users can create reports
+    match /reports/{reportId} {
+      allow read: if false; // Only admins can read (handled server-side)
+      allow create: if request.auth != null && request.resource.data.reporterId == request.auth.uid;
+    }
+    
+    // Notifications - users can only read their own notifications
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Ingredient science - public read
+    match /ingredient_science/{ingredientId} {
+      allow read: if true;
+      allow write: if false; // Only backend can write
+    }
+    
+    // Staged products - authenticated read/write
+    match /staged_products/{productId} {
+      allow read, write: if request.auth != null;
+    }
+    
     // Default: deny all other access
     match /{document=**} {
       allow read, write: if false;

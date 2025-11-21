@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Upload, TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, TrendingUp, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
@@ -7,6 +8,7 @@ import { Label } from "../components/ui/label";
 import { Layout } from "../components/Layout";
 
 const Progress = () => {
+  const navigate = useNavigate();
   const [improvements, setImprovements] = useState<string[]>([]);
 
   const checkInQuestions = [
@@ -29,6 +31,14 @@ const Progress = () => {
     <Layout>
       <div className="min-h-screen bg-background pt-24 pb-12 px-4">
         <div className="max-w-3xl mx-auto fade-in">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/dashboard")}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">Track Your Progress</h1>
           <p className="text-muted-foreground text-lg">See how your hair journey is evolving</p>

@@ -15,12 +15,12 @@ const Scan = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
 
-  // Load YOLO model
-  const { session, runModel } = useYolo("/models/yolo11.onnx");
+  // Load YOLO model (optional - gracefully handles missing model)
+  const { session, runModel, error: modelError } = useYolo("/models/yolo11.onnx");
 
   // Simple label list for classification
   // (Replace with your actual hair type labels)
-  const labels = ["Straight", "Wavy", "Curly", "Coily", "Dreadlocks"];
+  const labels = ["Straight", "Wavy", "Curly", "Kinky", "Dreadlocks"];
 
   // Redirect user if quiz is already done
   useEffect(() => {
@@ -52,8 +52,21 @@ const Scan = () => {
 
   // ---- YOLO CLASSIFICATION ----
   const handleAnalyze = async () => {
-    if (!selectedImage || !session) {
-      console.log("Model not ready or image missing");
+    if (!selectedImage) {
+      console.log("Image missing");
+      return;
+    }
+
+    // If model is not available, proceed without AI analysis
+    if (!session) {
+      console.warn("AI model not available, proceeding without automatic analysis");
+      navigate("/quiz", {
+        state: {
+          image: selectedImage,
+          hairType: null, // User will select manually in quiz
+          confidence: 0
+        }
+      });
       return;
     }
 
@@ -131,6 +144,13 @@ const Scan = () => {
             </p>
           </div>
 
+          {modelError && (
+            <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-600">
+              <p className="font-medium">AI analysis unavailable</p>
+              <p className="text-yellow-500/80">You can still continue with manual selection in the quiz.</p>
+            </div>
+          )}
+
           <Card className="p-8 md:p-12 bg-card border-border shadow-sm">
             {!selectedImage ? (
               <div className="space-y-6">
@@ -180,9 +200,13 @@ const Scan = () => {
                     Upload different photo
                   </Button>
 
-                  {/* Analyze triggers YOLO */}
-                  <Button className="flex-1" onClick={handleAnalyze}>
-                    Analyze
+                  {/* Analyze triggers YOLO (or proceeds without if model unavailable) */}
+                  <Button 
+                    className="flex-1" 
+                    onClick={handleAnalyze}
+                    disabled={!selectedImage}
+                  >
+                    {session ? "Analyze with AI" : "Continue"}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>

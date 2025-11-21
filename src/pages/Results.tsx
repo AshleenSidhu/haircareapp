@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Droplets, Wind, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
+import { Droplets, Wind, Sparkles, ArrowRight, RefreshCw, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -10,9 +10,6 @@ import { db } from "../lib/firebase";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { generateRecommendations, UserQuizAnswers } from "../lib/recommendations";
 import { useToast } from "../hooks/use-toast";
-import { translateToIngredients } from "../components/ingredientTranslation";
-import { filterAndScoreProducts } from "../components/productfilter";
-import productsDB from "../data/products.json"; // wherever your DB is located
 
 interface QuizResult {
   id: string;
@@ -88,45 +85,53 @@ const Results = () => {
 
   const generateProductRecommendations = async (answers: Record<string, any>) => {
     setGenerating(true);
+    
+    // Set a timeout to show mock recommendations if it takes too long
+    let timeoutFired = false;
+    const timeoutId = setTimeout(() => {
+      timeoutFired = true;
+      console.log("Recommendations taking too long, showing mock data");
+      setRecommendations(getMockRecommendations());
+      setGenerating(false);
+    }, 8000); // 8 second timeout
 
     try {
-      // Step 1 — Translate quiz answers using your code
-      const translated = translateToIngredients({
-        hairType: answers.hairType,
-        thickness: answers.thickness,
-        porosity: answers.porosity,
-        shampoo: answers.shampoo,
-        heat: answers.heat,
-        allergies: answers.allergies || [],
-        budget: answers.budget,
-        brandAvoid: answers.brandAvoid,
-        concerns: answers.concerns || [],
-        productQualities: answers.productQualities || []
-      });
+      // Transform quiz answers to match UserQuizAnswers format
+      const userQuizAnswers: UserQuizAnswers = {
+        hairType: answers.thickness === "Fine" ? "straight" : answers.thickness === "Medium" ? "wavy" : "curly",
+        porosity: (answers.porosity?.toLowerCase() || "medium") as "low" | "medium" | "high",
+        waterType: "neutral",
+        concerns: Array.isArray(answers.concerns) ? answers.concerns : [],
+        preferences: {
+          vegan: Array.isArray(answers.productQualities) && answers.productQualities.includes("Vegan / cruelty-free"),
+          crueltyFree: Array.isArray(answers.productQualities) && answers.productQualities.includes("Vegan / cruelty-free"),
+          organic: Array.isArray(answers.productQualities) && answers.productQualities.includes("Organic or natural ingredients"),
+          fragranceFree: Array.isArray(answers.productQualities) && answers.productQualities.includes("Fragrance-free"),
+        },
+        allergens: Array.isArray(answers.allergies) ? answers.allergies.filter((a: string) => a !== "None") : [],
+        budget: answers.budget === "< 15$" ? "low" : answers.budget === "16$-35$" ? "medium" : answers.budget === "36$-59$" ? "high" : "medium",
+      };
 
-      console.log("Translated profile:", translated);
-
-      // Step 2 — Filter + score products using your database
-      const filteredProducts = filterAndScoreProducts(productsDB, translated);
-
-      console.log("Filtered products:", filteredProducts);
-
-      // Step 3 — Save results (top 10)
-      setRecommendations(filteredProducts.slice(0, 4));
-
+      const result = await generateRecommendations(userQuizAnswers, currentUser?.uid);
+      clearTimeout(timeoutId);
+      if (!timeoutFired) {
+        setRecommendations(result.recommendations || []);
+        setGenerating(false);
+      }
     } catch (error: any) {
-      console.error("Recommendation error:", error);
-
-      toast({
-        title: "Error generating recommendations",
-        description: "Showing fallback recommendations.",
-        variant: "destructive",
-      });
-
-      setRecommendations(getMockRecommendations());
+      clearTimeout(timeoutId);
+      if (!timeoutFired) {
+        console.error("Error generating recommendations:", error);
+        toast({
+          title: "Error generating recommendations",
+          description: "Showing sample recommendations. Please try again later.",
+          variant: "destructive",
+        });
+        // Show mock recommendations as fallback
+        setRecommendations(getMockRecommendations());
+        setGenerating(false);
+      }
     }
-
-    setGenerating(false);
   };
 
   const getMockRecommendations = () => [
@@ -200,6 +205,14 @@ const Results = () => {
     <Layout>
       <div className="min-h-screen bg-background pt-24 pb-12 px-4">
         <div className="max-w-4xl mx-auto fade-in">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/dashboard")}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl mb-4 text-foreground">Your Hair Profile</h1>
           <p className="text-muted-foreground text-lg">Personalized recommendations just for you</p>
@@ -235,109 +248,53 @@ const Results = () => {
               <p className="text-muted-foreground">No recommendations available yet. Please try again.</p>
             </Card>
           ) : (
-            recommendations.map((product: any, index: number) => {
-              const productName = product.title || "Unknown Product";
-              const brand = product.brand || "";
-              const explanation =
-                product.explanation || "This product matches your hair profile.";
-              const scoreBreakdown = product.scoreBreakdown || {};
-              const price = product.price ? `$${product.price}` : null;
-              const link = product.productPageUrl || null;
-
+            recommendations.map((item: any, index: number) => {
+              const product = item.product || item;
+              const productName = product.name || product.productName || "Unknown Product";
+              const brand = product.brand || product.brandName || "";
+              const explanation = item.aiExplanation || item.explanation || item.reason || "This product matches your hair profile.";
+              const scoreBreakdown = item.scoreBreakdown || {};
+              
               return (
-                <Card
-                  key={product.id || index}
-                  className="p-6 md:p-8 bg-card border-border shadow-sm slide-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="space-y-6">
-
-                    {/* PRODUCT IMAGE */}
-                    {product.imageUrl && (
-                      <div className="w-full flex justify-center mb-4">
-                        <img
-                          src={product.imageUrl}
-                          alt={productName}
-                          className="w-32 h-32 object-cover rounded-xl shadow-md"
-                        />
-                      </div>
-                    )}
-
-                    {/* NAME, BRAND, PRICE, LINK */}
+                <Card key={index} className="p-6 md:p-8 bg-card border-border shadow-sm slide-up" style={{ animationDelay: `${index * 100}ms` }}>
+                  <div className="space-y-4">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-2xl text-foreground font-semibold">
-                          {productName}
-                        </h3>
-
-                        {product.finalRank && (
-                          <Badge variant="secondary">#{product.finalRank}</Badge>
+                        <h3 className="text-2xl text-foreground">{productName}</h3>
+                        {item.finalRank && (
+                          <Badge variant="secondary">#{item.finalRank}</Badge>
                         )}
                       </div>
-
                       {brand && (
-                        <p className="text-muted-foreground mb-1 text-sm">{brand}</p>
+                        <p className="text-muted-foreground mb-2">{brand}</p>
                       )}
-
-                      {/* PRICE */}
-                      {price && (
-                        <p className="text-sm font-medium text-primary mb-1">
-                          {price}
-                        </p>
-                      )}
-
-                      {/* PRODUCT LINK */}
-                      {link && (
-                        <a
-                          href={link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 underline text-sm"
-                        >
-                          View product page →
-                        </a>
-                      )}
-
-                      {/* AI EXPLANATION */}
-                      <p className="text-muted-foreground mt-3 text-sm">{explanation}</p>
+                      <p className="text-muted-foreground">{explanation}</p>
                     </div>
 
-                    {/* SCORE BREAKDOWN */}
                     {Object.keys(scoreBreakdown).length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-border">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-4 border-t border-border">
                         {scoreBreakdown.tagMatch !== undefined && (
                           <div>
                             <p className="text-xs text-muted-foreground">Tag Match</p>
-                            <p className="text-sm font-medium">
-                              {Math.round(scoreBreakdown.tagMatch)}%
-                            </p>
+                            <p className="text-sm font-medium">{Math.round(scoreBreakdown.tagMatch)}%</p>
                           </div>
                         )}
-
                         {scoreBreakdown.sustainability !== undefined && (
                           <div>
                             <p className="text-xs text-muted-foreground">Sustainability</p>
-                            <p className="text-sm font-medium">
-                              {Math.round(scoreBreakdown.sustainability)}%
-                            </p>
+                            <p className="text-sm font-medium">{Math.round(scoreBreakdown.sustainability)}%</p>
                           </div>
                         )}
-
                         {scoreBreakdown.ingredientSafety !== undefined && (
                           <div>
                             <p className="text-xs text-muted-foreground">Safety</p>
-                            <p className="text-sm font-medium">
-                              {Math.round(scoreBreakdown.ingredientSafety)}%
-                            </p>
+                            <p className="text-sm font-medium">{Math.round(scoreBreakdown.ingredientSafety)}%</p>
                           </div>
                         )}
-
                         {scoreBreakdown.reviewSentiment !== undefined && (
                           <div>
                             <p className="text-xs text-muted-foreground">Reviews</p>
-                            <p className="text-sm font-medium">
-                              {Math.round(scoreBreakdown.reviewSentiment)}%
-                            </p>
+                            <p className="text-sm font-medium">{Math.round(scoreBreakdown.reviewSentiment)}%</p>
                           </div>
                         )}
                       </div>

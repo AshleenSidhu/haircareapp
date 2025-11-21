@@ -6,7 +6,7 @@
 import { Product } from './OpenBeautyFactsAdapter';
 
 // Get API key from environment variable (REACT_APP_ prefix required for Create React App)
-const BEAUTYFEEDS_API_KEY = process.env.REACT_APP_BEAUTYFEEDS_API_KEY || 'f6b8e2e95439818289c2b0acbfb90b12d82210a8';
+const BEAUTYFEEDS_API_KEY = process.env.REACT_APP_BEAUTYFEEDS_API_KEY
 const BEAUTYFEEDS_BASE_URL = process.env.REACT_APP_BEAUTYFEEDS_API_URL || 'https://api.beautyfeeds.io/v1';
 
 export class BeautyFeedsAdapter {

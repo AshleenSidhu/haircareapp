@@ -3,13 +3,35 @@ import * as ort from "onnxruntime-web";
 
 export function useYolo(modelPath: string = "/models/yolo11.onnx") {
   const [session, setSession] = useState<ort.InferenceSession | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const s = await ort.InferenceSession.create(modelPath, {
-        executionProviders: ["wasm"], // or "webgpu"
-      });
-      setSession(s);
+      try {
+        // First, check if the model file exists
+        const response = await fetch(modelPath, { method: 'HEAD' });
+        if (!response.ok) {
+          throw new Error(`Model file not found at ${modelPath}`);
+        }
+
+        const s = await ort.InferenceSession.create(modelPath, {
+          executionProviders: ["wasm"], // or "webgpu"
+        });
+        setSession(s);
+        setError(null);
+      } catch (err: any) {
+        // Log detailed error for debugging
+        const errorMessage = err?.message || 'Failed to load model';
+        console.warn('[useYolo] Failed to load ONNX model:', errorMessage);
+        console.warn('[useYolo] Error details:', {
+          code: err?.code,
+          message: err?.message,
+          path: modelPath,
+          suggestion: 'The model file may be missing, corrupted, or incompatible. The app will continue without AI model features.'
+        });
+        setError(errorMessage);
+        setSession(null);
+      }
     };
     load();
   }, [modelPath]);
@@ -78,7 +100,7 @@ export function useYolo(modelPath: string = "/models/yolo11.onnx") {
     return outputs;
   };
 
-  return { session, runModel };
+  return { session, runModel, error };
 }
 
 // Basic preprocessing (adjust to your YOLO version)
