@@ -360,4 +360,3 @@ Provide personalized, evidence-based advice. Be friendly, conversational, and he
 
   return prompt;
 }
-
