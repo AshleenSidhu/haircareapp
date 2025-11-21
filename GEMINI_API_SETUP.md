@@ -1,6 +1,6 @@
 # Gemini API Key Setup
 
-Your Gemini API key has been configured: `AIzaSyBR_eIwxP9SRkN-EIpamOcD8x6oKypu_MI`
+
 
 ## ✅ Already Configured
 
