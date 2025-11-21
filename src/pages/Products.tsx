@@ -768,22 +768,9 @@ const Products = () => {
                 onClick={() => setSelectedProduct(product)}
               >
                 <div className="w-full h-48 bg-muted rounded-lg mb-4 flex items-center justify-center overflow-hidden">
-                  {product?.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.title || 'Product image'}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error(`[Products] Image failed to load for ${product?.title}:`, product?.imageUrl);
-                        // Fallback to placeholder if image fails
-                        (e.target as HTMLImageElement).src = `https://picsum.photos/400/400?random=${product?.id || Math.random()}`;
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-muted">
-                      <Sparkles className="w-12 h-12 text-primary" />
-                    </div>
-                  )}
+                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                    <Sparkles className="w-12 h-12 text-primary" />
+                  </div>
                 </div>
                 <h3 className="text-xl mb-2 text-foreground">{product?.title || 'Unknown Product'}</h3>
                 <p className="text-muted-foreground mb-2">{product?.brand || 'Unknown Brand'}</p>
