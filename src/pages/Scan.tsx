@@ -16,7 +16,7 @@ const Scan = () => {
   const [showCamera, setShowCamera] = useState(false);
 
   // Load YOLO model (optional - gracefully handles missing model)
-  const { session, runModel, error: modelError } = useYolo("/models/yolov8n-cls.onnx");
+  const { session, runModel, error: modelError } = useYolo("/models/yolo11.onnx");
 
   // Simple label list for classification
   // (Replace with your actual hair type labels)
@@ -92,7 +92,7 @@ const Scan = () => {
         return;
       }
 
-      // YOLOv8 CLS = classification → output looks like: { logits: Tensor }
+      // YOLOv11 CLS = classification → output looks like: { logits: Tensor }
       const raw = output[Object.keys(output)[0]].data as Float32Array;
 
       console.log("Raw model output:", raw);

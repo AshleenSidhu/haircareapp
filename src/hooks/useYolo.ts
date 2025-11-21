@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import * as ort from "onnxruntime-web";
 
-export function useYolo(modelPath: string = "/models/yolov8n-cls.onnx") {
+export function useYolo(modelPath: string = "/models/yolo11.onnx") {
   const [session, setSession] = useState<ort.InferenceSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
